@@ -19,9 +19,7 @@ class Server {
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(cookieParser());
 
-    this.app.get('/', (req, res) => {
-      res.status(200).send('Hello, Braid!').end();
-    });
+    this.app.use(express.static(path.join(__dirname, "../public"), { maxAge: 31557600000 }));
 
     this.app.listen(port, () => {
       this.running = true;
