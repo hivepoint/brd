@@ -1,2 +1,2 @@
-# brd
-Braid - Personal Search Engine
+# Braid
+Your Personal Search Engine
