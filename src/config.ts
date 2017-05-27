@@ -1,5 +1,3 @@
-"use strict";
-
 import fs = require('fs');
 
 export class Config {

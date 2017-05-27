@@ -16,7 +16,7 @@
       "name": "Braid-Typescript",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceRoot}/index.ts",
+      "program": "${workspaceRoot}/src/index.ts",
       "smartStep": true,
       "stopOnEntry": false,
       "args": [],

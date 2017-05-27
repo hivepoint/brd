@@ -17,11 +17,14 @@
   },
   "homepage": "https://github.com/SevogleAdmin/brd#readme",
   "dependencies": {
+    "@types/mustache": "^0.8.29",
     "body-parser": "^1.17.2",
-    "command-line-args": "^4.0.5",
+    "command-line-args": "^2.1.6",
     "compression": "^1.6.2",
+    "console-stamp": "^0.2.5",
     "cookie-parser": "^1.4.3",
-    "express": "^4.15.3"
+    "express": "^4.15.3",
+    "mustache": "^2.3.0"
   },
   "devDependencies": {
     "@types/body-parser": "^1.16.3",

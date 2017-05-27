@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>{{&pageTitle}}</title>
+
+  {{&ogdata}}
+
+  <script>
+    var redirectUrl = "{{&url}}";
+    if (document && document.readyState === "complete") {
+      window.location.replace(redirectUrl);
+    } else {
+      window.onload = function () {
+        window.location.replace(redirectUrl);
+      };
+    }
+  </script>
+</head>
+
+<body>
+</body>
+This page will <a href="{{&url}}">redirect</a> shortly.
+
+</html>
