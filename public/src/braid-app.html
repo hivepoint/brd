@@ -1,0 +1,32 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+
+<dom-module id="braid-app">
+  <template>
+    <style>
+       :host {
+        display: block;
+      }
+    </style>
+    <h2>Hello [[prop1]]!</h2>
+  </template>
+
+  <script>
+    /**
+     * @customElement
+     * @polymer
+     */
+    class BraidApp extends Polymer.Element {
+      static get is() { return 'braid-app'; }
+      static get properties() {
+        return {
+          prop1: {
+            type: String,
+            value: 'braid-app'
+          }
+        };
+      }
+    }
+
+    window.customElements.define(BraidApp.is, BraidApp);
+  </script>
+</dom-module>

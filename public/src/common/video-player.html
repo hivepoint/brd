@@ -1,0 +1,51 @@
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+<dom-module id="video-player">
+  <template>
+    <style>
+       :host {
+        display: block;
+        box-sizing: border-box;
+        display: block;
+        overflow: hidden;
+      }
+
+      video {
+        min-width: 100%;
+        min-height: 100%;
+        width: auto;
+        height: auto;
+        display: block;
+        position: absolute;
+        top: 50%;
+        left: 100%;
+        transform: translate(-100%, -50%);
+      }
+
+      #imgPanel {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+      }
+    </style>
+    <video id="v" muted="true" autoplay="true" loop="true" poster$="{{data.thumbnail}}">
+      <template is="dom-repeat" items="{{data.sources}}">
+        <source src$="{{item.url}}" type$="{{item.type}}"></source>
+      </template>
+    </video>
+    <div id="imgPanel" style="display: none;"></div>
+  </template>
+  <script>
+    class VideoPlayer extends Polymer.Element {
+      static get is() { return "video-player"; }
+      static get properties() {
+        return {
+          data: Object
+        };
+      }
+    }
+    window.customElements.define(VideoPlayer.is, VideoPlayer);
+  </script>
+</dom-module>
