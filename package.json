@@ -18,6 +18,7 @@
   "homepage": "https://github.com/SevogleAdmin/brd#readme",
   "dependencies": {
     "body-parser": "^1.17.2",
+    "command-line-args": "^4.0.5",
     "compression": "^1.6.2",
     "cookie-parser": "^1.4.3",
     "express": "^4.15.3"

@@ -17,5 +17,12 @@
   "include": [
     "src/**/*",
     "public/**/*"
-  ]
+  ],
+  "experimentalDecorators": true,
+  "forceConsistentCasingInFileNames": true,
+  "noFallthroughCasesInSwitch": true,
+  "noImplicitReturns": true,
+  "noImplicitThis": true,
+  "noUnusedLocals": true,
+  "pretty": true
 }

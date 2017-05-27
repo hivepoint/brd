@@ -11,6 +11,30 @@
         "../dist/**/*.js"
       ],
       "protocol": "inspector"
+    },
+    {
+      "name": "Braid-Typescript",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceRoot}/index.ts",
+      "smartStep": true,
+      "stopOnEntry": false,
+      "args": [],
+      "sourceMaps": true,
+      "cwd": "${workspaceRoot}",
+      "preLaunchTask": null,
+      "runtimeExecutable": null,
+      "runtimeArgs": [
+        "--nolazy"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "console": "internalConsole",
+      "outFiles": [
+        "${workspaceRoot}/**/*.js"
+      ],
+      "protocol": "auto"
     }
   ]
 }
