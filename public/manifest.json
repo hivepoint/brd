@@ -1,0 +1,6 @@
+{
+  "name": "braid",
+  "short_name": "braid",
+  "start_url": "/",
+  "display": "standalone"
+}

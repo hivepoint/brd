@@ -1,0 +1,16 @@
+{
+  "entrypoint": "index.html",
+  "shell": "src/home/home-page.html",
+  "fragments": [],
+  "sources": [
+    "src/**/*",
+    "images/**/*",
+    "media/**/*",
+    "bower.json"
+  ],
+  "lint": {
+    "rules": [
+      "polymer-2"
+    ]
+  }
+}
