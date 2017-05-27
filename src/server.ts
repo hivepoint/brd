@@ -17,6 +17,9 @@ import { utils } from "./utils/utils";
 import { Initializable } from "./interfaces/initializable";
 import { Startable } from "./interfaces/startable";
 import { ExecutionContext } from "./execution-context";
+import { emailManager } from "./email-manager";
+import { database } from "./db";
+import { waitingListManager } from "./waiting-list-manager";
 
 export class Server implements RestServiceRegistrar {
 
@@ -29,8 +32,8 @@ export class Server implements RestServiceRegistrar {
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
-  private restServers: RestServer[] = [];
-  private initializables: Initializable[] = [];
+  private restServers: RestServer[] = [waitingListManager];
+  private initializables: Initializable[] = [emailManager, database];
   private startables: Startable[] = [];
   private serverStatus = 'starting';
 
@@ -46,6 +49,9 @@ export class Server implements RestServiceRegistrar {
     });
 
     this.initialize(context);
+    for (const initializable of this.initializables) {
+      await initializable.initialize(context);
+    }
 
     await this.startServer(context);
     for (const startable of this.startables) {

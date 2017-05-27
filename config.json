@@ -40,5 +40,18 @@
       "disabled": true
     },
     "errorEmail": ""
+  },
+  "aws": {
+    "ses": {
+      "smtpUserName": "AKIAJYGRRST7AAOHUHKA",
+      "smtpPassword": "Aq1r9umZUVZ3WUau18IoFLEGjdWy1IIhP6Kt7jyZimZ9"
+    },
+    "sns": {
+      "inboundMailTopicArn": "",
+      "awsRegion": "us-east-1",
+      "awsIdentity": "trykai-net-server",
+      "secretKeyId": "AKIAILTJPVASOHW4IZJQ",
+      "secretAccessKey": "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"
+    }
   }
 }
