@@ -1,0 +1,44 @@
+{
+  "domain": "braid-staging.com",
+  "serverId": "DEV",
+  "baseClientUri": "http://localhost:31111",
+  "shortBaseClientUri": "http://localhost:31111",
+  "mongo": {
+    "mongoUrl": "mongodb://localhost:27017/brd",
+    "options": {},
+    "logging": "none",
+    "logSize": 256000000,
+    "serverOptions": {
+      "socketOptions": {
+        "socketTimeoutMS": 300000,
+        "connectTimeoutMS": 300000
+      }
+    }
+  },
+  "ssl": {
+    "ca": "/usr/local/etc/certs/caBundle",
+    "key": "/usr/local/etc/certs/server.key",
+    "cert": "/usr/local/etc/certs/server.crt"
+  },
+  "client": {
+    "enabled": true,
+    "ssl": false,
+    "port": 31111,
+    "noCaching": false,
+    "analytics": false,
+    "maxAge": 86400,
+    "rootMaxAge": 600
+  },
+  "admin": {
+    "enabled": true,
+    "code": "___sevogle94306"
+  },
+  "devMode": true,
+  "restrictAccess": false,
+  "logger": {
+    "loggly": {
+      "disabled": true
+    },
+    "errorEmail": ""
+  }
+}
