@@ -20,6 +20,7 @@ import { ExecutionContext } from "./execution-context";
 import { emailManager } from "./email-manager";
 import { database } from "./db";
 import { waitingListManager } from "./waiting-list-manager";
+import { userManager } from "./user-manager";
 
 export class Server implements RestServiceRegistrar {
 
@@ -249,6 +250,7 @@ export class Server implements RestServiceRegistrar {
 
   private async initializeHttpContext(context: Context, request: Request, response: Response) {
     context.serverId = context.getConfig('serverId');
+    await userManager.initializeHttpContext(context, request, response);
   }
 
   private sendInternalError(context: Context, request: Request, response: Response, err: any) {

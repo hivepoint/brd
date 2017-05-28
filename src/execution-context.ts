@@ -1,9 +1,11 @@
 
 import { Context } from "./interfaces/context";
 import { clock } from "./utils/clock";
+import { User } from "./db";
 
 export class ExecutionContext implements Context {
   id: string;
+  user: User;
   serverId: string;
   private configData: any;
   private started: number;
