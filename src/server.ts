@@ -88,7 +88,8 @@ export class Server implements RestServiceRegistrar {
       await restServer.initializeRestServices(context, this);
     }
 
-    this.app.use(this.publicBase, express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+    this.app.use('/', express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+    // this.app.use(this.publicBase, express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
     this.app.use(this.staticBase, express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
 
     // this.app.use(express.static(path.join(__dirname, "../public"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));

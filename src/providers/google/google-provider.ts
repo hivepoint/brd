@@ -55,8 +55,8 @@ export class GoogleProvider implements RestServer {
   }
 
   async handleServiceAuthRequest(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    const userToken = request.query.token;
-    if (!userToken) {
+    const braidUserId = request.query.braidUserId;
+    if (!braidUserId) {
       return new RestServiceResult(null, 400, "Missing token param");
     }
     const callbackUrl = request.query.callback;
@@ -88,7 +88,7 @@ export class GoogleProvider implements RestServer {
     const url = oauthClient.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      state: JSON.stringify({ token: userToken, services: scopedServiceIds, callback: callbackUrl })
+      state: JSON.stringify({ token: braidUserId, services: scopedServiceIds, callback: callbackUrl })
     });
     return new RestServiceResult(null, null, null, url);
   }
@@ -123,7 +123,7 @@ export class GoogleProvider implements RestServer {
             if (profileErr) {
               reject(profileErr);
             } else {
-              void googleUsers.upsertRecord(context, state.token, profile.id, this.getEmailFromProfile(profile), profile, tokens, state.scopedServiceIds).then(() => {
+              void googleUsers.upsertRecord(context, state.braidUserId, profile.id, this.getEmailFromProfile(profile), profile, tokens, state.scopedServiceIds).then(() => {
                 resolve(new RestServiceResult(null, null, null, state.callback));
               });
             }

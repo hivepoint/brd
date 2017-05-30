@@ -162,21 +162,21 @@ export class SearchRestServer implements RestServer {
       };
       client.get(searchable.service.searchUrl, args, (data: ServiceSearchResult, response: Response) => {
         if (data && data.success) {
-          serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, data.searchResult.matches).then(() => {
-            serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false).then(() => {
+          void serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, data.searchResult.matches).then(() => {
+            void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false).then(() => {
               resolve();
             });
           });
         } else {
-          providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', data.errorMessage, clock.now()).then(() => {
-            serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, data.errorMessage).then(() => {
+          void providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', data.errorMessage, clock.now()).then(() => {
+            void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, data.errorMessage).then(() => {
               resolve();
             });
           });
         }
       }).on('error', (err: any) => {
-        providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', err.toString(), clock.now()).then(() => {
-          serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, err.toString()).then(() => {
+        void providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', err.toString(), clock.now()).then(() => {
+          void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, err.toString()).then(() => {
             resolve();
           });
         });
