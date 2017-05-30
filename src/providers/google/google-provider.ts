@@ -89,6 +89,7 @@ export class GoogleProvider implements RestServer, Startable {
           scopedServiceIds.push(serviceId);
           break;
         case googleDriveSearcher.getDescriptor(context).id:
+          this.addScopes(scopes, googleDriveSearcher.getOauthScopes());
           scopedServiceIds.push(serviceId);
           break;
         default:
