@@ -26,26 +26,23 @@ import { googleProvider } from "./providers/google/google-provider";
 import { gmailSearcher } from "./providers/google/gmail-searcher";
 import { googleDriveSearcher } from "./providers/google/drive-searcher";
 import { searchManager } from "./search-manager";
+import { userRestServer } from "./user-rest-server";
+import { urlManager } from "./url-manager";
 
 export class Server implements RestServiceRegistrar {
 
   private version = Date.now();
   private running = false;
   private app: express.Application;
-  private publicBase: string;
-  private staticBase = "/s";
-  private dynamicBase = "/d";
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
-  private restServers: RestServer[] = [waitingListManager, searchRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
+  private restServers: RestServer[] = [waitingListManager, userRestServer, searchRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
   private initializables: Initializable[] = [emailManager, database];
-  private startables: Startable[] = [searchManager];
+  private startables: Startable[] = [googleProvider, searchManager];
   private serverStatus = 'starting';
 
   async start(context: Context): Promise<void> {
-    this.publicBase = '/v' + context.getConfig('version');
-
     process.on('unhandledRejection', (reason: any) => {
       logger.error(context, 'server', "Unhandled Rejection!", JSON.stringify(reason), reason.stack);
     });
@@ -90,7 +87,7 @@ export class Server implements RestServiceRegistrar {
 
     this.app.use('/', express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
     // this.app.use(this.publicBase, express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
-    this.app.use(this.staticBase, express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+    this.app.use(urlManager.getStaticBaseUrl(context), express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
 
     // this.app.use(express.static(path.join(__dirname, "../public"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
     // this.app.use(express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
@@ -179,7 +176,7 @@ export class Server implements RestServiceRegistrar {
   }
 
   private registerGet(context: Context, handler: RestServiceHandler, suffix: string, dynamic: boolean, cacheable: boolean, contentType?: string): void {
-    this.app.get((dynamic ? this.dynamicBase : '') + suffix, (request, response) => {
+    this.app.get((dynamic ? urlManager.getDynamicBaseUrl(context) : '') + suffix, (request, response) => {
       void this.handleHttpRequest(context, request, response, handler, cacheable, contentType).then(() => {
         // noop
       });
@@ -187,7 +184,7 @@ export class Server implements RestServiceRegistrar {
   }
 
   private registerPut(context: Context, handler: RestServiceHandler, suffix: string, dynamic: boolean, cacheable: boolean): void {
-    this.app.put((dynamic ? this.dynamicBase : '') + suffix, (request, response) => {
+    this.app.put((dynamic ? urlManager.getDynamicBaseUrl(context) : '') + suffix, (request, response) => {
       void this.handleHttpRequest(context, request, response, handler, cacheable).then(() => {
         // noop
       });
@@ -195,7 +192,7 @@ export class Server implements RestServiceRegistrar {
   }
 
   private registerPost(context: Context, handler: RestServiceHandler, suffix: string, dynamic: boolean, cacheable: boolean): void {
-    this.app.post((dynamic ? this.dynamicBase : '') + suffix, (request, response) => {
+    this.app.post((dynamic ? urlManager.getDynamicBaseUrl(context) : '') + suffix, (request, response) => {
       void this.handleHttpRequest(context, request, response, handler, cacheable).then(() => {
         // noop
       });
@@ -203,19 +200,11 @@ export class Server implements RestServiceRegistrar {
   }
 
   private registerDelete(context: Context, handler: RestServiceHandler, suffix: string, dynamic: boolean, cacheable: boolean): void {
-    this.app.delete((dynamic ? this.dynamicBase : '') + suffix, (request, response) => {
+    this.app.delete((dynamic ? urlManager.getDynamicBaseUrl(context) : '') + suffix, (request, response) => {
       void this.handleHttpRequest(context, request, response, handler, cacheable).then(() => {
         // noop
       });
     });
-  }
-
-  getPublicBase(): string {
-    return this.publicBase;
-  }
-
-  getDynamicBase(): string {
-    return this.dynamicBase;
   }
 
   private async handleHttpRequest(parentContext: Context, request: Request, response: Response, handler: RestServiceHandler, cacheable: boolean, contentType?: string): Promise<void> {
@@ -270,7 +259,7 @@ export class Server implements RestServiceRegistrar {
   private redirectToUrl(context: Context, request: Request, response: Response, toUrl: string) {
     const ogData = '';
     const view = {
-      static_base: this.staticBase,
+      static_base: urlManager.getStaticBaseUrl(context),
       ogdata: ogData,
       url: toUrl,
       pageTitle: "Braid"

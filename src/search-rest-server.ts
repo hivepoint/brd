@@ -12,15 +12,6 @@ import { v4 as uuid } from 'node-uuid';
 import { searchManager } from "./search-manager";
 const Client = require('node-rest-client').Client;
 
-export interface ServiceSearchResult {
-  userId: string;
-  providerId: string;
-  serviceId: string;
-  success: boolean;
-  errorMessage?: string;
-  searchResult?: SearchResult;
-}
-
 export interface ProviderListing {
   descriptor: SearchProviderDescriptor;
 
@@ -88,11 +79,13 @@ export class SearchRestServer implements RestServer {
         for (const provider of searchManager.getProviderDescriptors()) {
           if (acct.providerId === provider.id) {
             for (const service of provider.services) {
-              searchables.push({
-                account: acct,
-                provider: provider,
-                service: service
-              });
+              if (acct.profile.serviceIds && acct.profile.serviceIds.indexOf(service.id) >= 0) {
+                searchables.push({
+                  account: acct,
+                  provider: provider,
+                  service: service
+                });
+              }
             }
           }
         }
@@ -152,7 +145,7 @@ export class SearchRestServer implements RestServer {
     return new Promise<void>((resolve, reject) => {
       const client = new Client();
       const args = {
-        parameters: { braidUserId: context.user.id, id: searchable.account.accountId, q: searchString },
+        parameters: { braidUserId: context.user.id, accountId: searchable.account.accountId, q: searchString },
         requestConfig: {
           timeout: 120000
         },
@@ -160,16 +153,16 @@ export class SearchRestServer implements RestServer {
           timeout: 120000
         }
       };
-      client.get(searchable.service.searchUrl, args, (data: ServiceSearchResult, response: Response) => {
-        if (data && data.success) {
-          void serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, data.searchResult.matches).then(() => {
+      client.get(searchable.service.searchUrl, args, (data: SearchResult, response: Response) => {
+        if (data) {
+          void serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, data.matches).then(() => {
             void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false).then(() => {
               resolve();
             });
           });
         } else {
-          void providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', data.errorMessage, clock.now()).then(() => {
-            void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, data.errorMessage).then(() => {
+          void providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', "No search data returned", clock.now()).then(() => {
+            void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, "No search data returned").then(() => {
               resolve();
             });
           });

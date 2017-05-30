@@ -1,32 +1,39 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
-import { googleUsers, GoogleUser } from "../../db";
+import { googleUsers, GoogleUser, searchProviders } from "../../db";
 import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
 import { SearchProviderDescriptor, ProviderUserProfile, ProviderAccountProfile } from "../../interfaces/search-provider";
 import { gmailSearcher } from "./gmail-searcher";
 import { GoogleSearcher } from "./google-searcher";
 import { googleDriveSearcher } from "./drive-searcher";
+import { Startable } from "../../interfaces/startable";
+import url = require('url');
+import { urlManager } from "../../url-manager";
 
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
-const PROVIDER_ID = 'com.hivepoint.search.google';
+const PROVIDER_ID = 'com.hivepoint.google';
 
 const CLIENT_ID = '465784242367-35slo3s2c649sos2r92t9kkhkqidm8vi.apps.googleusercontent.com';
 const CLIENT_SECRET = 'HcxU0DLd_Uq0fegkYq92lrme';
 
-export class GoogleProvider implements RestServer {
-  private createOauthClient(context: Context, googleUser?: GoogleUser): any {
+const SERVICE_URL = '/svc/google';
+const AUTH_URL = SERVICE_URL + '/auth';
+const AUTH_CALLBACK_URL = SERVICE_URL + '/callback';
+
+export class GoogleProvider implements RestServer, Startable {
+  createOauthClient(context: Context, googleUser?: GoogleUser): any {
     const OAuth2 = google.auth.OAuth2;
 
     const result = new OAuth2(
       CLIENT_ID,
       CLIENT_SECRET,
-      'http://localhost:31111/d/svc/google/callback'
+      urlManager.getDynamicUrl(context, AUTH_CALLBACK_URL, true)
     );
     if (googleUser) {
       result.setCredentials(googleUser.tokens);
@@ -35,22 +42,26 @@ export class GoogleProvider implements RestServer {
   }
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleServiceProvider.bind(this), 'get', '/svc/google', true, false);
-    registrar.registerHandler(context, this.handleServiceAuthRequest.bind(this), 'get', '/svc/google/auth', true, false);
-    registrar.registerHandler(context, this.handleServiceAuthCallback.bind(this), 'get', '/svc/google/callback', true, false);
-    registrar.registerHandler(context, this.handleUserProfile.bind(this), 'get', '/svc/google/profile', true, false);
+    registrar.registerHandler(context, this.handleServiceProvider.bind(this), 'get', SERVICE_URL, true, false);
+    registrar.registerHandler(context, this.handleServiceAuthRequest.bind(this), 'get', AUTH_URL, true, false);
+    registrar.registerHandler(context, this.handleServiceAuthCallback.bind(this), 'get', AUTH_CALLBACK_URL, true, false);
+    registrar.registerHandler(context, this.handleUserProfile.bind(this), 'get', SERVICE_URL + '/profile', true, false);
+  }
+
+  async start(context: Context): Promise<void> {
+    await searchProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true), null);
   }
 
   async handleServiceProvider(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
     const description: SearchProviderDescriptor = {
       id: PROVIDER_ID,
       name: 'Google',
-      logoSquareUrl: '/s/svcs/google/google.png',
-      authUrl: '/s/svcs/google/auth',
+      logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/google.png'),
+      authUrl: urlManager.getDynamicUrl(context, AUTH_URL, true),
       services: []
     };
-    description.services.push(gmailSearcher.getDescriptor());
-    description.services.push(googleDriveSearcher.getDescriptor());
+    description.services.push(gmailSearcher.getDescriptor(context));
+    description.services.push(googleDriveSearcher.getDescriptor(context));
     return new RestServiceResult(description);
   }
 
@@ -69,15 +80,15 @@ export class GoogleProvider implements RestServer {
     }
     const serviceIds = serviceIdString.split(',');
     const services: GoogleSearcher[] = [];
-    const scopes: string[] = ['profile'];
+    const scopes: string[] = ['https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'];
     const scopedServiceIds: string[] = [];
     for (const serviceId of serviceIds) {
       switch (serviceId.trim().toLowerCase()) {
-        case gmailSearcher.getDescriptor().id:
+        case gmailSearcher.getDescriptor(context).id:
           this.addScopes(scopes, gmailSearcher.getOauthScopes());
           scopedServiceIds.push(serviceId);
           break;
-        case googleDriveSearcher.getDescriptor().id:
+        case googleDriveSearcher.getDescriptor(context).id:
           scopedServiceIds.push(serviceId);
           break;
         default:
@@ -88,7 +99,7 @@ export class GoogleProvider implements RestServer {
     const url = oauthClient.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      state: JSON.stringify({ token: braidUserId, services: scopedServiceIds, callback: callbackUrl })
+      state: JSON.stringify({ braidUserId: braidUserId, services: scopedServiceIds, clientCallback: callbackUrl })
     });
     return new RestServiceResult(null, null, null, url);
   }
@@ -108,7 +119,7 @@ export class GoogleProvider implements RestServer {
     }
     const stateString = request.query.state;
     const state = JSON.parse(stateString);
-    if (!state || !state.token || !state.scopedServiceIds) {
+    if (!state || !state.braidUserId || !state.services) {
       return new RestServiceResult(null, 400, "State information is missing");
     }
     return new Promise<RestServiceResult>((resolve, reject) => {
@@ -118,13 +129,13 @@ export class GoogleProvider implements RestServer {
           reject(err);
         } else {
           oauthClient.setCredentials(tokens);
-          const plus = google.plus('v1');
-          plus.people.get({ userId: 'me', auth: oauthClient }, (profileErr: any, profile: any) => {
+          const oauth2 = google.oauth2('v2');
+          oauth2.userinfo.get({ userId: 'me', auth: oauthClient }, (profileErr: any, profile: any) => {
             if (profileErr) {
               reject(profileErr);
             } else {
-              void googleUsers.upsertRecord(context, state.braidUserId, profile.id, this.getEmailFromProfile(profile), profile, tokens, state.scopedServiceIds).then(() => {
-                resolve(new RestServiceResult(null, null, null, state.callback));
+              void googleUsers.upsertRecord(context, state.braidUserId, profile.id, profile.email, profile, tokens, state.services).then(() => {
+                resolve(new RestServiceResult(null, null, null, utils.appendUrlParam(state.clientCallback, 'accountId', profile.id)));
               });
             }
           });
@@ -150,14 +161,14 @@ export class GoogleProvider implements RestServer {
     for (const user of users) {
       const account: ProviderAccountProfile = {
         accountId: user.googleUserId,
-        name: user.profile.displayName,
-        accountName: this.getEmailFromProfile(user.profile),
-        imageUrl: user.profile.image ? user.profile.image.url : null,
+        name: user.profile.name,
+        accountName: user.profile.email,
+        imageUrl: user.profile.picture,
         serviceIds: user.serviceIds
       };
       result.accounts.push(account);
     }
-    return result;
+    return new RestServiceResult(result);
   }
 
   private getEmailFromProfile(profile: any): string {

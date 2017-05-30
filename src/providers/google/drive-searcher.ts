@@ -6,22 +6,23 @@ import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
 import { GoogleSearcher } from "./google-searcher";
 import { SearchServiceDescriptor } from "../../interfaces/search-provider";
+import { urlManager } from "../../url-manager";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
 const SEARCH_URL = '/svc/google/search/drive';
-const SERVICE_ID = 'com.hivepoint.search.google.drive';
+const SERVICE_ID = 'com.hivepoint.google.drive';
 
 export class GoogleDriveSearcher extends GoogleSearcher {
 
-  getDescriptor(): SearchServiceDescriptor {
+  getDescriptor(context: Context): SearchServiceDescriptor {
     return {
       id: SERVICE_ID,
       name: 'Drive',
-      logoSquareUrl: '/s/svcs/google/drive.png',
-      searchUrl: '/d' + SEARCH_URL
+      logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/drive.png'),
+      searchUrl: urlManager.getDynamicUrl(context, SEARCH_URL, true)
     };
   }
 
@@ -35,7 +36,7 @@ export class GoogleDriveSearcher extends GoogleSearcher {
 
   async handleSearch(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
     const braidUserId = request.query.braidUserId;
-    const googleUserId = request.query.id;
+    const googleUserId = request.query.accountId;
     if (!braidUserId || !googleUserId) {
       return new RestServiceResult(null, 400, "braidUserId and/or id parameter is missing");
     }
