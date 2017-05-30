@@ -1,85 +1,76 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from './interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from './interfaces/context';
-import { searchServices, userServices, UserService, SearchService } from "./db";
+import { searchProviders, SearchProvider, providerAccounts, ProviderAccount, serviceSearchResults, serviceSearchMatches } from "./db";
 import { userManager } from "./user-manager";
 import { clock } from "./utils/clock";
 import { logger } from "./utils/logger";
 import { utils } from "./utils/utils";
+import { SearchResult } from "./interfaces/search-match";
+import { ProviderAccountProfile, SearchProviderDescriptor, SearchServiceDescriptor } from "./interfaces/search-provider";
+import { v4 as uuid } from 'node-uuid';
+import { searchManager } from "./search-manager";
 const Client = require('node-rest-client').Client;
-
-export interface SearchMatch {
-  serviceId: string;
-  serviceName: string;
-  serviceLogoUrl: string;
-  score: number;
-  type: string;
-  title: string;
-  bodyMarkup: string;
-  detailsUrl: string;
-}
-
-export interface SearchResult {
-  matches: SearchMatch[];
-}
 
 export interface ServiceSearchResult {
   userId: string;
+  providerId: string;
   serviceId: string;
   success: boolean;
   errorMessage?: string;
-  matches: SearchMatch[];
+  searchResult?: SearchResult;
 }
 
-export interface UserServiceListing {
-  isOperational: boolean;
-  lastErrorMessage?: string;
-  lastErrorAt?: number;
+export interface ProviderListing {
+  descriptor: SearchProviderDescriptor;
+
+  userInfo: ProviderAccount[];
 }
 
-export interface ServiceListing {
-  service: SearchService;
+interface Searchable {
+  account: ProviderAccount;
+  provider: SearchProviderDescriptor;
+  service: SearchServiceDescriptor;
+}
 
-  userInfo?: UserServiceListing;
+export interface SearchRestResult {
+  providerId: string;
+  serviceId: string;
+  pending: boolean;
+  errorMessage?: string;
+  searchResults?: SearchResult;
+}
+
+export interface SearchRestResponse {
+  searchId: string;
+  serviceResults: SearchRestResult[];
 }
 
 export class SearchRestServer implements RestServer {
+
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleSearchServices.bind(this), 'get', '/search/services', true, false);
     registrar.registerHandler(context, this.handleSearch.bind(this), 'post', '/search', true, false);
+    registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'post', '/search/poll', true, false);
   }
 
   async handleSearchServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    const result: ServiceListing[] = [];
-    const services = await searchServices.listAllActive(context);
-    for (const service of services) {
-      const item: ServiceListing = {
-        service: service
+    const result: ProviderListing[] = [];
+    const accts = await providerAccounts.findByUser(context, context.user.id);
+    for (const provider of searchManager.getProviderDescriptors()) {
+      const item: ProviderListing = {
+        descriptor: provider,
+        userInfo: []
       };
       if (context.user) {
-        const userService = await userServices.findByUserAndService(context, context.user.id, service.id);
-        if (userService) {
-          const userItem: UserServiceListing = {
-            isOperational: userService.state === 'active',
-          };
-          if (!userItem.isOperational) {
-            userItem.lastErrorAt = userService.lastErrorAt;
-            userItem.lastErrorMessage = userService.lastErrorMessage;
+        for (const acct of accts) {
+          if (acct.providerId === provider.id) {
+            item.userInfo.push(acct);
           }
-          item.userInfo = userItem;
         }
       }
       result.push(item);
     }
-    result.sort((a, b) => {
-      if (a.userInfo && !b.userInfo) {
-        return -1;
-      } else if (!a.userInfo && b.userInfo) {
-        return 1;
-      } else {
-        return a.service.id.localeCompare(b.service.id);
-      }
-    });
     return new RestServiceResult(result);
   }
 
@@ -88,79 +79,108 @@ export class SearchRestServer implements RestServer {
     if (!searchString) {
       return new RestServiceResult(null, 400, "Missing search query");
     }
-    const result: SearchResult = { matches: [] };
+    const searchId = 's-' + uuid();
+    const result: SearchRestResponse = { searchId: searchId, serviceResults: [] };
     if (context.user) {
-      const searchables = await userServices.findByUser(context, context.user.id, 'active');
-      if (searchables.length > 0) {
-        const promises: Array<Promise<ServiceSearchResult>> = [];
-        for (const searchable of searchables) {
-          promises.push(this.initiateSearch(context, searchable, searchString));
-        }
-        const searchableResults = await Promise.all(promises);
-        for (const searchableResult of searchableResults) {
-          if (searchableResult.success) {
-            for (const match of searchableResult.matches) {
-              result.matches.push(match);
+      const searchables: Searchable[] = [];
+      const accts = await providerAccounts.findByUser(context, context.user.id);
+      for (const acct of accts) {
+        for (const provider of searchManager.getProviderDescriptors()) {
+          if (acct.providerId === provider.id) {
+            for (const service of provider.services) {
+              searchables.push({
+                account: acct,
+                provider: provider,
+                service: service
+              });
             }
-          } else {
-            logger.warn(context, 'search-rest', 'initiateSearch', 'Search failure on ' + searchableResult.serviceId, searchableResult.errorMessage, response);
-            await userServices.updateState(context, searchableResult.userId, searchableResult.serviceId, 'error', searchableResult.errorMessage, clock.now());
           }
         }
+      }
+      if (searchables.length > 0) {
+        for (const searchable of searchables) {
+          await serviceSearchResults.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, true, false);
+        }
+        const promises: Array<Promise<void>> = [];
+        for (const searchable of searchables) {
+          promises.push(this.initiateSearch(context, searchId, searchable, searchString));
+        }
+        await Promise.race(promises); // Wait until at least one has completed
+        return await this.handleSearchPollInternal(context, searchId, request, response);
       }
     }
     return new RestServiceResult(result);
   }
 
-  private async initiateSearch(context: Context, searchable: UserService, searchString: string): Promise<ServiceSearchResult> {
-    const service = await searchServices.findById(context, searchable.serviceId);
-    if (service) {
-      await userServices.updateState(context, searchable.userId, searchable.serviceId, 'internalError', 'Service is no longer available', clock.now());
+  async handleSearchPoll(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    const searchId = request.query.searchId;
+    if (!searchId) {
+      return new RestServiceResult(null, 400, "Missing searchId param");
     }
-    return new Promise<ServiceSearchResult>((resolve, reject) => {
-      if (service) {
-        resolve({
-          userId: searchable.userId,
-          serviceId: searchable.serviceId,
-          success: false,
-          errorMessage: 'Service is not available',
+    return await this.handleSearchPollInternal(context, searchId, request, response);
+  }
+
+  private async handleSearchPollInternal(context: Context, searchId: string, request: Request, response: Response): Promise<RestServiceResult> {
+    const result: SearchRestResponse = {
+      searchId: searchId,
+      serviceResults: []
+    };
+    const serviceResults = await serviceSearchResults.findBySearch(context, searchId);
+    for (const serviceResult of serviceResults) {
+      const item: SearchRestResult = {
+        providerId: serviceResult.providerId,
+        serviceId: serviceResult.serviceId,
+        pending: serviceResult.pending,
+        errorMessage: serviceResult.errorMessage
+      };
+      if (!serviceResult.pending && !serviceResult.delivered) {
+        item.searchResults = {
           matches: []
-        });
-      } else {
-        const client = new Client();
-        const args = {
-          parameters: { token: searchable.authorizationToken, q: searchString },
-          requestConfig: {
-            timeout: 30000
-          },
-          responseConfig: {
-            timeout: 30000
-          }
         };
-        client.get(service.searchUrl, args, (data: ServiceSearchResult, response: Response) => {
-          if (data && data.success) {
-            data.userId = searchable.userId;
-            data.serviceId = searchable.serviceId;
-            resolve(data);
-          } else {
-            resolve({
-              userId: searchable.userId,
-              serviceId: searchable.serviceId,
-              success: false,
-              errorMessage: 'Service did not respond correctly',
-              matches: []
+        const matchesRecord = await serviceSearchMatches.findById(context, searchId, serviceResult.providerId, serviceResult.serviceId);
+        if (matchesRecord) {
+          item.searchResults.matches = matchesRecord.results;
+        }
+        await serviceSearchResults.updateDelivered(context, searchId, serviceResult.providerId, serviceResult.serviceId, true);
+      }
+      result.serviceResults.push(item);
+    }
+    return new RestServiceResult(result);
+  }
+
+  private async initiateSearch(context: Context, searchId: string, searchable: Searchable, searchString: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const client = new Client();
+      const args = {
+        parameters: { braidUserId: context.user.id, id: searchable.account.accountId, q: searchString },
+        requestConfig: {
+          timeout: 120000
+        },
+        responseConfig: {
+          timeout: 120000
+        }
+      };
+      client.get(searchable.service.searchUrl, args, (data: ServiceSearchResult, response: Response) => {
+        if (data && data.success) {
+          serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, data.searchResult.matches).then(() => {
+            serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false).then(() => {
+              resolve();
             });
-          }
-        }).on('error', (err: any) => {
-          resolve({
-            userId: searchable.userId,
-            serviceId: searchable.serviceId,
-            success: false,
-            errorMessage: 'Service invocation failure: ' + err,
-            matches: []
+          });
+        } else {
+          providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', data.errorMessage, clock.now()).then(() => {
+            serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, data.errorMessage).then(() => {
+              resolve();
+            });
+          });
+        }
+      }).on('error', (err: any) => {
+        providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', err.toString(), clock.now()).then(() => {
+          serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, err.toString()).then(() => {
+            resolve();
           });
         });
-      }
+      });
     });
   }
 }

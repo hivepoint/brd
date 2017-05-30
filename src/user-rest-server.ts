@@ -1,99 +1,80 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from './interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from './interfaces/context';
-import { searchServices, userServices } from "./db";
 import url = require('url');
 import { v4 as uuid } from 'node-uuid';
 import { clock } from "./utils/clock";
 import { userManager } from "./user-manager";
-
-export interface UserAuthorizedService {
-  serviceId: string;
-  serviceName: string;
-  providerName: string;
-  isOperational: boolean;
-  lastErrorMessage?: string;
-  lastErrorAt?: number;
-}
-export interface UserIdentity {
-  authorizedServices: UserAuthorizedService[];
-}
+import { searchManager } from "./search-manager";
+import { providerAccounts } from "./db";
+import { ProviderAccountProfile } from "./interfaces/search-provider";
 
 export class UserRestServer implements RestServer {
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleIdentityRequest.bind(this), 'post', '/user/identity', true, false);
-    registrar.registerHandler(context, this.handleServiceAuthRequest.bind(this), 'get', '/user/svc/auth/request', true, false);
-    registrar.registerHandler(context, this.handleServiceAuthCallback.bind(this), 'get', '/user/svc/auth/callback', true, false);
+    registrar.registerHandler(context, this.handleProviderAuthRequest.bind(this), 'get', '/user/svc/auth/request', true, false);
+    registrar.registerHandler(context, this.handleProviderAuthCallback.bind(this), 'get', '/user/svc/auth/callback', true, false);
   }
 
-  async handleIdentityRequest(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    // User wants to know about themselves
-    const result: UserIdentity = {
-      authorizedServices: []
-    };
-    if (context.user) {
-      const searchables = await userServices.findByUser(context, context.user.id, 'active');
-      for (const searchable of searchables) {
-        const service = await searchServices.findById(context, searchable.serviceId);
-        if (service) {
-          const item: UserAuthorizedService = {
-            serviceId: searchable.serviceId,
-            serviceName: service.serviceName,
-            providerName: service.providerName,
-            isOperational: service.state === 'active',
-          };
-          if (!item.isOperational) {
-            item.lastErrorAt = searchable.lastErrorAt;
-            item.lastErrorMessage = searchable.lastErrorMessage;
-          }
-          result.authorizedServices.push(item);
-        }
-      }
-      result.authorizedServices.sort((a, b) => {
-        return a.serviceId.localeCompare(b.serviceId);
-      });
+  async handleProviderAuthRequest(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    // User wants to initiate (or re-initiate) an authentication for a search service provider
+    // They will list the subset of services provided by that provider that they would like to
+    // authorize.
+    const providerId = request.query.providerId;
+    if (!providerId) {
+      return new RestServiceResult(null, 400, "providerId param missing");
     }
-    return new RestServiceResult(result);
-  }
-
-  async handleServiceAuthRequest(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    // User wants to initiate (or re-initiate) an authentication for a search service
-    // Base on the service they are asking for, we will redirect them to the appropriate oauth URL, along with a
-    // token that we expect to get back during the callback which will link it back to the same user
-    const serviceId = request.query.service;
-    if (!serviceId) {
-      return new RestServiceResult(null, 400, "serviceId param missing");
+    const provider = searchManager.getProviderDescriptorById(providerId);
+    if (!provider) {
+      return new RestServiceResult(null, 404, "No such provider");
     }
-    const service = await searchServices.findById(context, serviceId);
-    if (!service || service.state !== 'active') {
-      return new RestServiceResult(null, 400, "Unknown or unavailable service");
+    const serviceIdString = request.query.serviceIds;
+    let serviceIds: string[] = [];
+    if (serviceIdString) {
+      serviceIds = serviceIdString.split(/\s+\,\s+/);
     }
     const userCallbackUrl = request.query.callback;
     if (!userCallbackUrl) {
       return new RestServiceResult(null, 400, "callback param missing");
     }
     const user = await userManager.getOrCreateUser(context, request, response);
-    const token = uuid();
-    await userServices.upsertRecord(context, user.id, serviceId, token, 'pending', userCallbackUrl, clock.now());
-    const callbackUrl = url.resolve(context.getConfig('baseClientUri'), "/d/user/svc/auth/callback?token=" + encodeURIComponent(token));
-    const redirectUri = service.authUrl + (service.authUrl.indexOf('?') < 0 ? '?' : '&') + 'token=' + encodeURIComponent(token) + '&callbackUrl=' + encodeURIComponent(callbackUrl);
+    const callbackUrl = url.resolve(context.getConfig('baseClientUri'), "/d/user/svc/auth/callback?braidUserId=" + encodeURIComponent(user.id) + "&providerId=" + encodeURIComponent(provider.id) + "&callback=" + encodeURIComponent(userCallbackUrl));
+    const redirectUri = provider.authUrl + (provider.authUrl.indexOf('?') < 0 ? '?' : '&') + 'braidUserId=' + encodeURIComponent(user.id) + '&callbackUrl=' + encodeURIComponent(callbackUrl);
     return new RestServiceResult(null, null, null, redirectUri);
   }
 
-  async handleServiceAuthCallback(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+  async handleProviderAuthCallback(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
     // After completing the auth for a search service, the user will have been redirected to here
     // The URL should include a token that we use to link this back to the same user.
-    // We then redirect the user back to an appropriate landing page.
-    const token = request.query.token;
-    if (!token) {
-      return new RestServiceResult(null, 400, "Missing token param");
+    // In addition, the callback will include a param to tell us the provider-specific account ID
+    // which may be a new account, or could be one we've previous authenticated with, in which case
+    // we'll be updating our records accordingly
+    const braidUserId = request.query.braidUserId;
+    const providerId = request.query.providerId;
+    const accountId = request.query.accountId;
+    const userCallbackUrl = request.query.callback;
+    if (!braidUserId || !providerId || !accountId || !userCallbackUrl) {
+      return new RestServiceResult(null, 400, "Missing braidUserId, providerId, accountId and/or callback params");
     }
-    const userService = await userServices.findByAuthorizationToken(context, token);
-    if (!userService || clock.now() - userService.initiated > 1000 * 60 * 60) {
-      return new RestServiceResult(null, 400, "Token is invalid or has expired");
+    const provider = searchManager.getProviderDescriptorById(providerId);
+    if (!provider) {
+      return new RestServiceResult(null, 404, "No such provider");
     }
-    await userServices.updateState(context, userService.userId, userService.serviceId, 'active');
-    return new RestServiceResult(null, null, null, userService.userCallbackUrl);
+    const profile = await searchManager.fetchUserProfile(context, provider, braidUserId);
+    if (!profile) {
+      return new RestServiceResult(null, 503, "Profile is missing from search provider");
+    }
+    let matchingAccount: ProviderAccountProfile;
+    for (const account of profile.accounts) {
+      if (account.accountId === accountId) {
+        matchingAccount = account;
+        break;
+      }
+    }
+    if (!matchingAccount) {
+      return new RestServiceResult(null, 503, "Profile account is missing from search provider");
+    }
+    await providerAccounts.upsertRecord(context, braidUserId, providerId, matchingAccount, 'active');
+    return new RestServiceResult(null, null, null, userCallbackUrl);
   }
 }
 

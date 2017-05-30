@@ -21,6 +21,11 @@ import { emailManager } from "./email-manager";
 import { database } from "./db";
 import { waitingListManager } from "./waiting-list-manager";
 import { userManager } from "./user-manager";
+import { searchRestServer } from "./search-rest-server";
+import { googleProvider } from "./providers/google/google-provider";
+import { gmailSearcher } from "./providers/google/gmail-searcher";
+import { googleDriveSearcher } from "./providers/google/drive-searcher";
+import { searchManager } from "./search-manager";
 
 export class Server implements RestServiceRegistrar {
 
@@ -33,9 +38,9 @@ export class Server implements RestServiceRegistrar {
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
-  private restServers: RestServer[] = [waitingListManager];
+  private restServers: RestServer[] = [waitingListManager, searchRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
   private initializables: Initializable[] = [emailManager, database];
-  private startables: Startable[] = [];
+  private startables: Startable[] = [searchManager];
   private serverStatus = 'starting';
 
   async start(context: Context): Promise<void> {
@@ -83,8 +88,11 @@ export class Server implements RestServiceRegistrar {
       await restServer.initializeRestServices(context, this);
     }
 
-    this.app.use(express.static(path.join(__dirname, "../public"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
-    this.app.use(express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+    this.app.use(this.publicBase, express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+    this.app.use(this.staticBase, express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+
+    // this.app.use(express.static(path.join(__dirname, "../public"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+    // this.app.use(express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
 
     if (!context.getConfig('client.ssl')) {
       logger.log(context, "server", "startServer", "Using unencrypted client connections");

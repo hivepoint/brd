@@ -13,13 +13,12 @@ export class SearchServiceCollection extends MongoCollection {
     await this.searchServices.createIndex({ state: 1, id: 1 });
   }
 
-  async upsertRecord(context: Context, id: string, serviceName: string, providerName: string, logoUrl: string, authUrl: string, searchUrl: string, secret: string): Promise<SearchService> {
-    const record = {
+  async upsertRecord(context: Context, id: string, serviceName: string, providerId: string, logoUrl: string, searchUrl: string, secret: string): Promise<SearchService> {
+    const record: SearchService = {
       id: id,
       serviceName: serviceName,
-      providerName: providerName,
+      providerId: providerId,
       logoUrl: logoUrl,
-      authUrl: authUrl,
       searchUrl: searchUrl,
       secret: secret,
       state: 'active',
@@ -41,15 +40,14 @@ export class SearchServiceCollection extends MongoCollection {
 }
 
 export interface SearchService {
-  id: string;
-  serviceName: string;
-  providerName: string;
-  logoUrl: string;
-  authUrl: string;
-  searchUrl: string;
-  secret: string;
-  state: string;
-  added: number;
+  id: string; // example:  'com.hivepoint.google.gmail'
+  serviceName: string; // example: 'Gmail'
+  providerId: string; // example 'com.hivepoint.google'
+  logoUrl: string; // example 64x64 gmail icon
+  searchUrl: string; // URL supporting search REST service
+  secret: string; // secret to pass to REST service
+  state: string; // 'active', 'error', etc.
+  added: number; // when first added
 
 }
 

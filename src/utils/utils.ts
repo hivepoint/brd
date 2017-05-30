@@ -279,8 +279,23 @@ export class Utils {
     }
     return rlines.join('\n');
   }
+
+  appendUrlParam(url: string, name: string, value: string): string {
+    const parts = url.split('#', 2);
+    let result = parts[0];
+    if (result.indexOf('?') < 0) {
+      result += '?';
+    } else {
+      result += '&';
+    }
+    result += name + '=' + encodeURIComponent(value);
+    if (parts.length > 1) {
+      result += parts[1];
+    }
+    return result;
+  }
 }
 
 const utils = new Utils();
 
-export { utils }
+export { utils };
