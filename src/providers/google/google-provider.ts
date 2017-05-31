@@ -1,10 +1,10 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
-import { googleUsers, GoogleUser, searchProviders } from "../../db";
+import { googleUsers, GoogleUser, serviceProviders } from "../../db";
 import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
-import { SearchProviderDescriptor, ProviderUserProfile, ProviderAccountProfile } from "../../interfaces/search-provider";
+import { ServiceProviderDescriptor, ProviderUserProfile, ProviderAccountProfile } from "../../interfaces/service-provider";
 import { gmailSearcher } from "./gmail-searcher";
 import { GoogleSearcher } from "./google-searcher";
 import { googleDriveSearcher } from "./drive-searcher";
@@ -49,11 +49,11 @@ export class GoogleProvider implements RestServer, Startable {
   }
 
   async start(context: Context): Promise<void> {
-    await searchProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true), null);
+    await serviceProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true), null);
   }
 
   async handleServiceProvider(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    const description: SearchProviderDescriptor = {
+    const description: ServiceProviderDescriptor = {
       id: PROVIDER_ID,
       name: 'Google',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/google.png'),

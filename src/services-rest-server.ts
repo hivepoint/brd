@@ -1,7 +1,7 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from './interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from './interfaces/context';
-import { SearchProvider, providerAccounts, ProviderAccount, serviceSearchResults, serviceSearchMatches } from "./db";
+import { serviceProviders, providerAccounts, ProviderAccount, serviceSearchResults, serviceSearchMatches } from "./db";
 import { userManager } from "./user-manager";
 import { clock } from "./utils/clock";
 import { logger } from "./utils/logger";
@@ -22,7 +22,7 @@ export interface ProviderListingResponse {
   providers: ProviderListing[];
 }
 
-interface Searchable {
+interface Serviceable {
   account: ProviderAccount;
   provider: ServiceProviderDescriptor;
   service: ServiceDescriptor;
@@ -41,15 +41,15 @@ export interface SearchRestResponse {
   serviceResults: SearchRestResult[];
 }
 
-export class SearchRestServer implements RestServer {
+export class ServiceRestServer implements RestServer {
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleSearchServices.bind(this), 'get', '/services', true, false);
+    registrar.registerHandler(context, this.handleServices.bind(this), 'get', '/services', true, false);
     registrar.registerHandler(context, this.handleSearch.bind(this), 'post', '/search', true, false);
     registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'post', '/search/poll', true, false);
   }
 
-  async handleSearchServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+  async handleServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
     const result: ProviderListingResponse = { providers: [] };
     const accts = await providerAccounts.findByUser(context, context.user.id);
     for (const provider of servicesManager.getProviderDescriptors()) {
@@ -77,7 +77,7 @@ export class SearchRestServer implements RestServer {
     const searchId = 's-' + uuid();
     const result: SearchRestResponse = { searchId: searchId, serviceResults: [] };
     if (context.user) {
-      const searchables: Searchable[] = [];
+      const searchables: Serviceable[] = [];
       const accts = await providerAccounts.findByUser(context, context.user.id);
       for (const acct of accts) {
         for (const provider of servicesManager.getProviderDescriptors()) {
@@ -100,10 +100,10 @@ export class SearchRestServer implements RestServer {
         }
         const promises: Array<Promise<void>> = [];
         for (const searchable of searchables) {
-          promises.push(this.initiateSearch(context, searchId, searchable, searchString));
+          promises.push(this.initiateService(context, searchId, searchable, searchString));
         }
         await Promise.race(promises); // Wait until at least one has completed
-        return await this.handleSearchPollInternal(context, searchId, request, response);
+        return await this.handleServicePollInternal(context, searchId, request, response);
       }
     }
     return new RestServiceResult(result);
@@ -114,10 +114,10 @@ export class SearchRestServer implements RestServer {
     if (!searchId) {
       return new RestServiceResult(null, 400, "Missing searchId param");
     }
-    return await this.handleSearchPollInternal(context, searchId, request, response);
+    return await this.handleServicePollInternal(context, searchId, request, response);
   }
 
-  private async handleSearchPollInternal(context: Context, searchId: string, request: Request, response: Response): Promise<RestServiceResult> {
+  private async handleServicePollInternal(context: Context, searchId: string, request: Request, response: Response): Promise<RestServiceResult> {
     const result: SearchRestResponse = {
       searchId: searchId,
       serviceResults: []
@@ -145,7 +145,7 @@ export class SearchRestServer implements RestServer {
     return new RestServiceResult(result);
   }
 
-  private async initiateSearch(context: Context, searchId: string, searchable: Searchable, searchString: string): Promise<void> {
+  private async initiateService(context: Context, searchId: string, searchable: Serviceable, searchString: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const client = new Client();
       const args = {
@@ -182,6 +182,6 @@ export class SearchRestServer implements RestServer {
   }
 }
 
-const searchRestServer = new SearchRestServer();
+const searchRestServer = new ServiceRestServer();
 
 export { searchRestServer };

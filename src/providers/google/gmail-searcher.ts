@@ -4,7 +4,7 @@ import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
 import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
-import { SearchServiceDescriptor } from "../../interfaces/search-provider";
+import { ServiceDescriptor } from "../../interfaces/service-provider";
 import { GoogleSearcher } from "./google-searcher";
 import { urlManager } from "../../url-manager";
 const googleBatch = require('google-batch');
@@ -36,7 +36,7 @@ const SEARCH_URL = '/svc/google/search/gmail';
 const SERVICE_ID = 'com.hivepoint.google.gmail';
 export class GmailSearcher extends GoogleSearcher {
 
-  getDescriptor(context: Context): SearchServiceDescriptor {
+  getDescriptor(context: Context): ServiceDescriptor {
     return {
       id: SERVICE_ID,
       name: 'Gmail',
