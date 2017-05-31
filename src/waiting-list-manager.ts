@@ -25,12 +25,12 @@ export class WaitingListManager implements RestServer {
       return new RestServiceResult(null, 409, 'This email address has already been registered.');
     }
     await waitingList.upsertWaitingList(context, email);
-    const toEmail = context.getConfig('waitingList.email') || "waitinglist@trykai.emailchannels.us";
-    let messageBody = 'New entry on the waiting list\n';
-    messageBody += 'Domain: ' + context.getConfig('domain') + '\n';
-    messageBody += 'Server: ' + context.getConfig('serverId') + '\n';
-    messageBody += 'Email: ' + email + '\n';
-    await emailManager.send(context, "Braid", "braid@" + context.getConfig('domain'), "Braid Waiting List", toEmail, "New WaitingList entry", messageBody, null);
+    // const toEmail = context.getConfig('waitingList.email') || "waitinglist@trykai.emailchannels.us";
+    // let messageBody = 'New entry on the waiting list\n';
+    // messageBody += 'Domain: ' + context.getConfig('domain') + '\n';
+    // messageBody += 'Server: ' + context.getConfig('serverId') + '\n';
+    // messageBody += 'Email: ' + email + '\n';
+    // await emailManager.send(context, "Braid", "braid@" + context.getConfig('domain'), "Braid Waiting List", toEmail, "New WaitingList entry", messageBody, null);
     logger.log(context, "waiting-list", "handleRegistrationRequest", "Email " + email + " added to waiting list");
     return new RestServiceResult({ result: 'ok' }, 200);
   }
