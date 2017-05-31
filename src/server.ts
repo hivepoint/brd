@@ -26,6 +26,7 @@ import { googleProvider } from "./providers/google/google-provider";
 import { gmailSearcher } from "./providers/google/gmail-searcher";
 import { googleDriveSearcher } from "./providers/google/drive-searcher";
 import { searchManager } from "./search-manager";
+import { rootPageHandler } from "./page-handlers/root-handler";
 
 export class Server implements RestServiceRegistrar {
 
@@ -38,8 +39,8 @@ export class Server implements RestServiceRegistrar {
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
-  private restServers: RestServer[] = [waitingListManager, searchRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
-  private initializables: Initializable[] = [emailManager, database];
+  private restServers: RestServer[] = [rootPageHandler, waitingListManager, searchRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
+  private initializables: Initializable[] = [rootPageHandler, emailManager, database];
   private startables: Startable[] = [searchManager];
   private serverStatus = 'starting';
 
@@ -88,12 +89,8 @@ export class Server implements RestServiceRegistrar {
       await restServer.initializeRestServices(context, this);
     }
 
-    this.app.use('/', express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
-    // this.app.use(this.publicBase, express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
+    this.app.use(this.publicBase, express.static(path.join(__dirname, '../public'), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
     this.app.use(this.staticBase, express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
-
-    // this.app.use(express.static(path.join(__dirname, "../public"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
-    // this.app.use(express.static(path.join(__dirname, "../static"), { maxAge: 1000 * 60 * 60 * 24 * 7 }));
 
     if (!context.getConfig('client.ssl')) {
       logger.log(context, "server", "startServer", "Using unencrypted client connections");

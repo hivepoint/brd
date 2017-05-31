@@ -105,4 +105,4 @@ export class EmailManager implements Initializable, LoggerEmailHandler {
 
 const emailManager = new EmailManager();
 
-export { emailManager }
+export { emailManager };
