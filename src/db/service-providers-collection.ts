@@ -13,11 +13,10 @@ export class ServiceProvidersCollection extends MongoCollection {
     await this.serviceProviders.createIndex({ state: 1, id: 1 });
   }
 
-  async upsertRecord(context: Context, id: string, serviceUrl: string, secret: string): Promise<SearchProvider> {
+  async upsertRecord(context: Context, id: string, serviceUrl: string): Promise<SearchProvider> {
     const record: SearchProvider = {
       id: id,
       serviceUrl: serviceUrl,
-      secret: secret,
       state: 'active',
       added: clock.now()
     };
@@ -40,7 +39,6 @@ export interface SearchProvider {
   id: string; // example:  'com.hivepoint.google'
   serviceUrl: string; // to REST service supporting provider API
   state: string; // 'active'
-  secret: string; // to authenticate us when we call the REST API
   added: number; // when first added
 }
 
