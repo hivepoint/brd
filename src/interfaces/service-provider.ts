@@ -32,7 +32,7 @@ export interface ServiceProviderDescriptor {
   services: ServiceDescriptor[];  // one for each service supported on Google
 }
 
-export interface SearchMatch {
+export interface FeedItem {
   providerId: string;
   serviceId: string;
   iconUrl: string;
@@ -41,5 +41,9 @@ export interface SearchMatch {
 }
 
 export interface SearchResult {
-  matches: SearchMatch[];
+  matches: FeedItem[];
+}
+
+export interface FeedResult {
+  items: FeedItem[];
 }

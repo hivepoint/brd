@@ -3,7 +3,7 @@ import { Collection } from 'mongodb';
 import { MongoCollection } from './mongo-collection';
 import { mongoDatabase } from './mongo-database';
 import { clock } from '../utils/clock';
-import { SearchMatch } from "../interfaces/service-provider";
+import { FeedItem } from "../interfaces/service-provider";
 
 export class ServiceSearchMatchesCollection extends MongoCollection {
   private serviceSearchMatches: Collection;
@@ -13,7 +13,7 @@ export class ServiceSearchMatchesCollection extends MongoCollection {
     await this.serviceSearchMatches.createIndex({ searchId: 1, providerId: 1, serviceId: 1 }, { unique: true });
   }
 
-  async insertRecord(context: Context, searchId: string, providerId: string, serviceId: string, results: SearchMatch[]): Promise<ServiceSearchMatches> {
+  async insertRecord(context: Context, searchId: string, providerId: string, serviceId: string, results: FeedItem[]): Promise<ServiceSearchMatches> {
     const record: ServiceSearchMatches = {
       searchId: searchId,
       providerId: providerId,
@@ -38,7 +38,7 @@ export interface ServiceSearchMatches {
   searchId: string;
   providerId: string;
   serviceId: string;
-  results: SearchMatch[];
+  results: FeedItem[];
   created: number;
 }
 
