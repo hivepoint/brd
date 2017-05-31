@@ -2,7 +2,6 @@ import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../inter
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
-import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
 import { ServiceDescriptor } from "../../interfaces/service-provider";
 import { googleProvider } from "./google-provider";
@@ -18,7 +17,7 @@ const DRIVE_SERVICE_ID = 'drive';
 const CLIENT_ID = '465784242367-35slo3s2c649sos2r92t9kkhkqidm8vi.apps.googleusercontent.com';
 const CLIENT_SECRET = 'HcxU0DLd_Uq0fegkYq92lrme';
 
-export abstract class GoogleSearcher implements RestServer {
+export abstract class GoogleService implements RestServer {
   protected PROVIDER_ID = 'com.hivepoint.search.google';
 
   abstract getDescriptor(context: Context): ServiceDescriptor;

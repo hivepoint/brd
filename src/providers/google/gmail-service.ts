@@ -2,10 +2,9 @@ import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../inter
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
-import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
-import { ServiceDescriptor } from "../../interfaces/service-provider";
-import { GoogleSearcher } from "./google-searcher";
+import { ServiceDescriptor, SERVICE_URL_SUFFIXES, SearchMatch, SearchResult } from "../../interfaces/service-provider";
+import { GoogleService } from "./google-service";
 import { urlManager } from "../../url-manager";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -33,9 +32,8 @@ interface GmailMatchDetails {
 }
 
 const SERVICE_URL = '/svc/google/gmail';
-const SEARCH_URL = SERVICE_URL + '/search';
 const SERVICE_ID = 'com.hivepoint.google.gmail';
-export class GmailSearcher extends GoogleSearcher {
+export class GmailService extends GoogleService {
 
   getDescriptor(context: Context): ServiceDescriptor {
     return {
@@ -51,7 +49,7 @@ export class GmailSearcher extends GoogleSearcher {
   }
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SEARCH_URL, true, false);
+    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.search, true, false);
   }
 
   async handleSearch(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -194,6 +192,6 @@ export class GmailSearcher extends GoogleSearcher {
   }
 }
 
-const gmailSearcher = new GmailSearcher();
+const gmailService = new GmailService();
 
-export { gmailSearcher };
+export { gmailService };

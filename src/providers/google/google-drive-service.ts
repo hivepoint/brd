@@ -2,10 +2,9 @@ import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../inter
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
-import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
-import { GoogleSearcher } from "./google-searcher";
-import { ServiceDescriptor } from "../../interfaces/service-provider";
+import { GoogleService } from "./google-service";
+import { ServiceDescriptor, SERVICE_URL_SUFFIXES, SearchMatch, SearchResult } from "../../interfaces/service-provider";
 import { urlManager } from "../../url-manager";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -13,10 +12,9 @@ const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
 const SERVICE_URL = '/svc/google/drive';
-const SEARCH_URL = SERVICE_URL + '/search';
 const SERVICE_ID = 'com.hivepoint.google.drive';
 
-export class GoogleDriveSearcher extends GoogleSearcher {
+export class GoogleDriveService extends GoogleService {
 
   getDescriptor(context: Context): ServiceDescriptor {
     return {
@@ -32,7 +30,7 @@ export class GoogleDriveSearcher extends GoogleSearcher {
   }
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SEARCH_URL, true, false);
+    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.search, true, false);
   }
 
   async handleSearch(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -95,6 +93,6 @@ export class GoogleDriveSearcher extends GoogleSearcher {
 
 }
 
-const googleDriveSearcher = new GoogleDriveSearcher();
+const googleDriveService = new GoogleDriveService();
 
-export { googleDriveSearcher };
+export { googleDriveService };

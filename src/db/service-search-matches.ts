@@ -3,7 +3,7 @@ import { Collection } from 'mongodb';
 import { MongoCollection } from './mongo-collection';
 import { mongoDatabase } from './mongo-database';
 import { clock } from '../utils/clock';
-import { SearchResult, SearchMatch } from "../interfaces/search-match";
+import { SearchMatch } from "../interfaces/service-provider";
 
 export class ServiceSearchMatchesCollection extends MongoCollection {
   private serviceSearchMatches: Collection;
