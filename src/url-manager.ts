@@ -19,6 +19,13 @@ export class UrlManager {
       return '/d';
     }
   }
+  getPublicBaseUrl(context: Context, absolute = false): string {
+    const baseUrl = '/v' + context.getConfig('version');
+    if (absolute) {
+      return context.getConfig('baseClientUri') + baseUrl;
+    }
+    return baseUrl;
+  }
 
   getStaticUrl(context: Context, relativeUrl: string, absolute = false): string {
     if (!relativeUrl.startsWith('/')) {

@@ -23,7 +23,7 @@
         background-size: cover;
         background-position: center center;
         background-repeat: no-repeat;
-        background-image: url('/images/mist.jpg');
+        background-image: url('/s/images/mist.jpg');
       }
 
       header {
@@ -95,6 +95,18 @@
         outline: none;
       }
 
+      #error {
+        font-size: 18px;
+        color: rgb(250, 110, 90);
+        min-height: 27px;
+        opacity: 0;
+      }
+
+      #submiting {
+        background: #000;
+        color: #5ec8f5;
+      }
+
       @media (max-width: 700px) {
         .textContent {
           font-size: 18px;
@@ -106,7 +118,7 @@
       <header class="layout vertical">
         <div class="flex headerImagePanel vertical layout">
           <div class="flex"></div>
-          <div class="headerImage"><img src="/images/logos/logo_white_800.png" /></div>
+          <div class="headerImage"><img src="/s/images/logos/logo_white_800.png" /></div>
           <div class="flex"></div>
         </div>
         <div class="headerTextPanel">
@@ -122,23 +134,26 @@
             <a href="https://twitter.com/braidapp" target="_blank"><button>Follow us on Twitter</button></a>
           </div>
           <div>
-            Or join our mailing list.
+            And join our mailing list.
           </div>
-          <div class="horizontal layout center">
+          <div class="horizontal layout center" style="position: relative;">
             <div class="flex">
-              <input type="email" placeholder="your email">
+              <input id="txtEmail" type="email" placeholder="your email" on-input="clearError">
             </div>
             <div style="padding-left: 15px;">
-              <button>Submit</button>
+              <button on-click="onSubmit">Submit</button>
+            </div>
+            <div id="submiting" class="fillContainer vertical layout" style="display: none;">
+              <span class="flex"></span>
+              <span>{{progressMessage}}</span>
+              <span class="flex"></span>
             </div>
           </div>
+          <div id="error">{{errorMessage}}</div>
       </section>
     </article>
+    <braid-service id="service"></braid-service>
   </template>
-  <script>
-    class HomePage extends Polymer.Element {
-      static get is() { return "home-page"; }
-    }
-    window.customElements.define(HomePage.is, HomePage);
-  </script>
+  <script src="home-page.js"></script>
+  <script src="../common/braid-service.js" async></script>
 </dom-module>
