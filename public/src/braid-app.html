@@ -1,32 +1,31 @@
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
 
 <dom-module id="braid-app">
   <template>
-    <style>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
        :host {
         display: block;
       }
-    </style>
-    <h2>Hello [[prop1]]!</h2>
-  </template>
 
-  <script>
-    /**
-     * @customElement
-     * @polymer
-     */
-    class BraidApp extends Polymer.Element {
-      static get is() { return 'braid-app'; }
-      static get properties() {
-        return {
-          prop1: {
-            type: String,
-            value: 'braid-app'
-          }
-        };
+      #shell {
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
       }
-    }
 
-    window.customElements.define(BraidApp.is, BraidApp);
-  </script>
+      #rightBuffer {
+        width: 300px;
+        background: #eee;
+        transition: width 0.4s ease;
+      }
+    </style>
+    <div id="shell" class="horizontal layout">
+      <div class="flex">
+      </div>
+      <div id="rightBuffer">
+      </div>
+    </div>
+  </template>
+  <script src="braid-app.js"></script>
 </dom-module>
