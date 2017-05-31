@@ -3,7 +3,7 @@ import { Collection } from 'mongodb';
 import { MongoCollection } from './mongo-collection';
 import { mongoDatabase } from './mongo-database';
 import { clock } from '../utils/clock';
-import { ProviderAccountProfile } from "../interfaces/search-provider";
+import { ProviderAccountProfile } from "../interfaces/service-provider";
 
 export class ProviderAccountsCollection extends MongoCollection {
   private providerAccounts: Collection;

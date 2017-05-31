@@ -25,7 +25,7 @@ import { searchRestServer } from "./search-rest-server";
 import { googleProvider } from "./providers/google/google-provider";
 import { gmailSearcher } from "./providers/google/gmail-searcher";
 import { googleDriveSearcher } from "./providers/google/drive-searcher";
-import { searchManager } from "./search-manager";
+import { servicesManager } from "./services-manager";
 import { rootPageHandler } from "./page-handlers/root-handler";
 import { userRestServer } from "./user-rest-server";
 import { urlManager } from "./url-manager";
@@ -40,7 +40,7 @@ export class Server implements RestServiceRegistrar {
   private clientServer: net.Server;
   private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, searchRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
   private initializables: Initializable[] = [rootPageHandler, emailManager, database];
-  private startables: Startable[] = [googleProvider, searchManager];
+  private startables: Startable[] = [googleProvider, servicesManager];
   private serverStatus = 'starting';
 
   async start(context: Context): Promise<void> {

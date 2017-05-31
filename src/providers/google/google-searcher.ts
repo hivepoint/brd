@@ -4,7 +4,7 @@ import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
 import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
-import { SearchServiceDescriptor } from "../../interfaces/search-provider";
+import { ServiceDescriptor } from "../../interfaces/service-provider";
 import { googleProvider } from "./google-provider";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -21,7 +21,7 @@ const CLIENT_SECRET = 'HcxU0DLd_Uq0fegkYq92lrme';
 export abstract class GoogleSearcher implements RestServer {
   protected PROVIDER_ID = 'com.hivepoint.search.google';
 
-  abstract getDescriptor(context: Context): SearchServiceDescriptor;
+  abstract getDescriptor(context: Context): ServiceDescriptor;
   abstract getOauthScopes(): string[];
   // See https://developers.google.com/identity/protocols/googlescopes
 

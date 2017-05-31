@@ -5,9 +5,9 @@ import url = require('url');
 import { v4 as uuid } from 'node-uuid';
 import { clock } from "./utils/clock";
 import { userManager } from "./user-manager";
-import { searchManager } from "./search-manager";
+import { servicesManager } from "./services-manager";
 import { providerAccounts } from "./db";
-import { ProviderAccountProfile } from "./interfaces/search-provider";
+import { ProviderAccountProfile } from "./interfaces/service-provider";
 import { urlManager } from "./url-manager";
 
 export class UserRestServer implements RestServer {
@@ -24,7 +24,7 @@ export class UserRestServer implements RestServer {
     if (!providerId) {
       return new RestServiceResult(null, 400, "providerId param missing");
     }
-    const provider = searchManager.getProviderDescriptorById(providerId);
+    const provider = servicesManager.getProviderDescriptorById(providerId);
     if (!provider) {
       return new RestServiceResult(null, 404, "No such provider");
     }
@@ -56,11 +56,11 @@ export class UserRestServer implements RestServer {
     if (!braidUserId || !providerId || !accountId || !userCallbackUrl) {
       return new RestServiceResult(null, 400, "Missing braidUserId, providerId, accountId and/or callback params");
     }
-    const provider = searchManager.getProviderDescriptorById(providerId);
+    const provider = servicesManager.getProviderDescriptorById(providerId);
     if (!provider) {
       return new RestServiceResult(null, 404, "No such provider");
     }
-    const profile = await searchManager.fetchUserProfile(context, provider, braidUserId);
+    const profile = await servicesManager.fetchUserProfile(context, provider, braidUserId);
     if (!profile) {
       return new RestServiceResult(null, 503, "Profile is missing from search provider");
     }

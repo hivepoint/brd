@@ -12,17 +12,17 @@ export interface ProviderUserProfile {
   accounts: ProviderAccountProfile[];  // one or more accounts authorized on Google
 }
 
-export interface SearchServiceDescriptor {
+export interface ServiceDescriptor {
   id: string;  // e.g., com.hivepoint.search.google
   name: string;  // e.g. Gmail
   logoSquareUrl: string; // e.g., gmail icon
   searchUrl: string;  // the API to get to the REST service handling gmail search
 }
 
-export interface SearchProviderDescriptor {
+export interface ServiceProviderDescriptor {
   id: string;  // e.g., 'com.hivepoint.search.google'
   name: string; // e.g., 'Google'
   logoSquareUrl: string; // e.g., google icon
   authUrl: string;  // the URL to redirect to to initiate OAUTH
-  services: SearchServiceDescriptor[];  // one for each service supported on Google
+  services: ServiceDescriptor[];  // one for each service supported on Google
 }

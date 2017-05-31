@@ -1,25 +1,25 @@
 import { Startable } from "./interfaces/startable";
-import { SearchProviderDescriptor, ProviderUserProfile } from "./interfaces/search-provider";
+import { ServiceProviderDescriptor, ProviderUserProfile } from "./interfaces/service-provider";
 import { Context } from "./interfaces/context";
-import { searchProviders, SearchProvider } from "./db";
+import { serviceProviders, SearchProvider } from "./db";
 const Client = require('node-rest-client').Client;
 
-export class SearchManager implements Startable {
+export class ServicesManager implements Startable {
   private providers: SearchProvider[] = [];
-  private providerDescriptors: SearchProviderDescriptor[] = [];
+  private providerDescriptors: ServiceProviderDescriptor[] = [];
 
   async start(context: Context): Promise<void> {
-    this.providers = await searchProviders.listAllActive(context);
+    this.providers = await serviceProviders.listAllActive(context);
     for (const provider of this.providers) {
       await this.loadProvider(context, provider);
     }
   }
 
-  getProviderDescriptors(): SearchProviderDescriptor[] {
+  getProviderDescriptors(): ServiceProviderDescriptor[] {
     return this.providerDescriptors;
   }
 
-  getProviderDescriptorById(id: string): SearchProviderDescriptor {
+  getProviderDescriptorById(id: string): ServiceProviderDescriptor {
     for (const provider of this.providerDescriptors) {
       if (provider.id === id) {
         return provider;
@@ -40,7 +40,7 @@ export class SearchManager implements Startable {
           timeout: 10000
         }
       };
-      client.get(provider.serviceUrl, args, (data: SearchProviderDescriptor, response: Response) => {
+      client.get(provider.serviceUrl, args, (data: ServiceProviderDescriptor, response: Response) => {
         this.providerDescriptors.push(data);
         resolve();
       }).on('error', (err: any) => {
@@ -58,7 +58,7 @@ export class SearchManager implements Startable {
     return null;
   }
 
-  async fetchUserProfile(context: Context, providerDescriptor: SearchProviderDescriptor, braidUserId: string): Promise<ProviderUserProfile> {
+  async fetchUserProfile(context: Context, providerDescriptor: ServiceProviderDescriptor, braidUserId: string): Promise<ProviderUserProfile> {
     const provider = this.getProviderById(providerDescriptor.id);
     if (!provider) {
       throw new Error("No such provider");
@@ -84,6 +84,6 @@ export class SearchManager implements Startable {
 
 }
 
-const searchManager = new SearchManager();
+const servicesManager = new ServicesManager();
 
-export { searchManager };
+export { servicesManager };

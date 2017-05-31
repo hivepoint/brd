@@ -4,13 +4,13 @@ import { MongoCollection } from './mongo-collection';
 import { mongoDatabase } from './mongo-database';
 import { clock } from '../utils/clock';
 
-export class SearchProviderCollection extends MongoCollection {
-  private searchProviders: Collection;
+export class ServiceProvidersCollection extends MongoCollection {
+  private serviceProviders: Collection;
 
   protected async setup(context: Context) {
-    this.searchProviders = mongoDatabase.db.collection('searchProviders');
-    await this.searchProviders.createIndex({ id: 1 }, { unique: true });
-    await this.searchProviders.createIndex({ state: 1, id: 1 });
+    this.serviceProviders = mongoDatabase.db.collection('serviceProviders');
+    await this.serviceProviders.createIndex({ id: 1 }, { unique: true });
+    await this.serviceProviders.createIndex({ state: 1, id: 1 });
   }
 
   async upsertRecord(context: Context, id: string, serviceUrl: string, secret: string): Promise<SearchProvider> {
@@ -21,18 +21,18 @@ export class SearchProviderCollection extends MongoCollection {
       state: 'active',
       added: clock.now()
     };
-    await this.searchProviders.update({ id: id }, record, { upsert: true });
+    await this.serviceProviders.update({ id: id }, record, { upsert: true });
     return record;
   }
 
   async findById(context: Context, id: string): Promise<SearchProvider> {
-    return await this.searchProviders.findOne({
+    return await this.serviceProviders.findOne({
       id: id.toLowerCase()
     });
   }
 
   async listAllActive(context: Context): Promise<SearchProvider[]> {
-    return await this.searchProviders.find({ state: 'active' }).sort({ id: 1 }).toArray();
+    return await this.serviceProviders.find({ state: 'active' }).sort({ id: 1 }).toArray();
   }
 }
 
@@ -44,6 +44,6 @@ export interface SearchProvider {
   added: number; // when first added
 }
 
-const searchProviders = new SearchProviderCollection();
+const serviceProviders = new ServiceProvidersCollection();
 
-export { searchProviders };
+export { serviceProviders };

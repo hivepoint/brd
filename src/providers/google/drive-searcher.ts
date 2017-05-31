@@ -5,7 +5,7 @@ import { googleUsers, GoogleUser } from "../../db";
 import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
 import { GoogleSearcher } from "./google-searcher";
-import { SearchServiceDescriptor } from "../../interfaces/search-provider";
+import { ServiceDescriptor } from "../../interfaces/service-provider";
 import { urlManager } from "../../url-manager";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -17,7 +17,7 @@ const SERVICE_ID = 'com.hivepoint.google.drive';
 
 export class GoogleDriveSearcher extends GoogleSearcher {
 
-  getDescriptor(context: Context): SearchServiceDescriptor {
+  getDescriptor(context: Context): ServiceDescriptor {
     return {
       id: SERVICE_ID,
       name: 'Drive',
