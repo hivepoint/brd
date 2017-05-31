@@ -57,6 +57,11 @@ class BraidApp extends Polymer.Element {
       this.$.toolbarSub.style.opacity = ht / offsetHeight;
       this._prevBarHeight = ht;
     }
+    var bshadow = this.$.scrollPanel.scrollTop > 5;
+    if (this.bshadow != bshadow) {
+      this.$.toolbar.style.boxShadow = bshadow ? "0 3px 5px -1px rgba(0, 0, 0, 0.4)" : "none";
+      this.bshadow = bshadow;
+    }
   }
 
   showMenu() {
@@ -71,9 +76,13 @@ class BraidApp extends Polymer.Element {
 
   refreshServices() {
     $service.getServices().then((response) => {
-      this.$.drawerContentPanel.style.opacity = 1;
-      this.set("providers", response.providers)
       console.log("services", response);
+      this.set("providers", response.providers)
+      Polymer.importHref(this.resolveUrl('provider/provider-panel.html'), () => {
+        this.$.drawerContentPanel.style.opacity = 1;
+      }, () => {
+        this.$.drawerContentPanel.style.opacity = 1;
+      });
     }).catch((err) => {
       console.error(err);
     });
