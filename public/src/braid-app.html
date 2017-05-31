@@ -1,6 +1,8 @@
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/elements/dom-repeat.html">
 <link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
 <link rel="import" href="braid-icons.html">
+<link rel="import" href="provider/provider-panel.html">
 
 <dom-module id="braid-app">
   <template>
@@ -32,8 +34,9 @@
 
       #rightDrawer {
         width: 300px;
-        background: #eee;
+        background: #fafafa;
         transition: right 0.5s ease;
+        position: relative;
       }
 
       #topBuffer {
@@ -120,6 +123,19 @@
 
       #glass {
         background: rgba(0, 0, 0, 0.4);
+      }
+
+      #drawerContentPanel {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .panelHeader {
+        text-align: center;
+        padding: 20px 10px 30px;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+        color: #666;
       }
 
       @media (max-width: 1000px) {
@@ -227,7 +243,18 @@
         </div>
         <div id="glass" class="fillContainer" on-click="closeMenu" style="display: none;"></div>
       </div>
-      <div id="rightDrawer"></div>
+
+      <div id="rightDrawer">
+        <div class="fillContainer verticalScroll">
+          <div id="drawerContentPanel">
+            <div class="panelHeader">Link your cloud services</div>
+            <template is="dom-repeat" items="{{providers}}">
+              <provider-panel data="{{item}}"></provider-panel>
+            </template>
+          </div>
+        </div>
+      </div>
+
     </div>
     <braid-service id="service"></braid-service>
   </template>

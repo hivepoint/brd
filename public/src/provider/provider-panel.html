@@ -1,0 +1,136 @@
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<dom-module id="provider-panel">
+  <template>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
+       :host {
+        display: block;
+      }
+
+      .logoCell {
+        padding: 10px 15px;
+      }
+
+      .logo {
+        display: block;
+        width: 64px;
+        height: auto;
+        margin: 0 auto;
+      }
+
+      .svcLogo {
+        width: 22px;
+        height: auto;
+        margin: 5px auto;
+        line-height: 22px;
+        display: block;
+      }
+
+      .textCell {
+        padding: 10px;
+      }
+
+      button {
+        background: rgba(81, 132, 233, 1);
+        color: white;
+        border: none;
+        font-family: inherit;
+        font-size: 15px;
+        padding: 3px 10px;
+        line-height: 1.5em;
+        cursor: pointer;
+        outline: none;
+      }
+
+      button:hover {
+        box-shadow: 0 3px 3px -1px rgba(0, 0, 0, 0.4);
+      }
+
+      .linked {
+        font-size: 10pt;
+        color: #777;
+        margin-top: 10px;
+        cursor: pointer;
+      }
+
+      .name {
+        font-weight: bold;
+        font-size: 20px;
+        color: #777;
+      }
+
+      a,
+      a:visited {
+        outline: none;
+        color: inherit !important;
+        text-decoration: none;
+      }
+
+      .accountItem {
+        font-size: 11pt;
+        font-family: 'Roboto', 'Noto', sans-serif;
+        color: #777;
+      }
+
+      #accountsPanel {
+        height: 0;
+        overflow: hidden;
+        transition: height 0.3s ease;
+      }
+
+      #accountsContent {
+        border-bottom: 1px solid #e5e5e5;
+        padding: 10px 0;
+      }
+
+      .userImg {
+        width: 60px;
+        height: 60px;
+        border-radius: 30px;
+        display: block;
+        margin: 5px 10px;
+      }
+
+      .userPanel {
+        padding: 0 10px;
+      }
+    </style>
+    <div class="horizontal layout center">
+      <div class="logoCell">
+        <img class="logo" src$="{{data.descriptor.logoSquareUrl}}">
+        <div class="horizontal layout center">
+          <template is="dom-repeat" items="{{data.descriptor.services}}">
+            <div class="flex" style="text-align: center;">
+              <img class="svcLogo" src$="{{item.logoSquareUrl}}" title$="{{item.name}}" />
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="flex textCell">
+        <div class="name">{{data.descriptor.name}}</div>
+        <div style="padding-top: 10px;">
+          <a href$="{{linkUrl}}">
+            <button>{{linkText}}</button>
+          </a>
+        </div>
+        <div id="accountLabel" class="linked" on-click="toggleAccounts">
+          <span style="color: #999;margin-right: 5px;font-size: 9pt;">{{accountChevron}}</span>
+          <span>{{accountCount}}</span>
+        </div>
+      </div>
+    </div>
+    <div id="accountsPanel">
+      <div id="accountsContent">
+        <template is="dom-repeat" items="{{data.accounts}}">
+          <div class="horizontal layout center accountItem">
+            <div><img class="userImg" src$="{{item.profile.imageUrl}}" /></div>
+            <div class="userPanel">
+              <div>{{item.profile.name}}</div>
+              <div>{{item.profile.accountName}}</div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+  <script src="provider-panel.js"></script>
+</dom-module>

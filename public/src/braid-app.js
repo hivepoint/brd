@@ -1,6 +1,12 @@
 class BraidApp extends Polymer.Element {
   static get is() { return 'braid-app'; }
 
+  static get properties() {
+    return {
+      providers: Array
+    }
+  }
+
   connectedCallback() {
     super.connectedCallback();
     window.$service = this.$.service;
@@ -64,8 +70,10 @@ class BraidApp extends Polymer.Element {
   }
 
   refreshServices() {
-    $service.getServices().then((services) => {
-      console.log("services", services);
+    $service.getServices().then((response) => {
+      this.$.drawerContentPanel.style.opacity = 1;
+      this.set("providers", response.providers)
+      console.log("services", response);
     }).catch((err) => {
       console.error(err);
     });

@@ -93,6 +93,23 @@ class BraidService extends Polymer.Element {
   getServices() {
     return this.rest.getJson(this.restBase + "/services");
   }
+
+  createProviderLinkUrl(provider) {
+    var url = this.restBase + '/user/svc/auth?';
+    url += "providerId=" + encodeURIComponent(provider.id);
+    if (provider.services && provider.services.length) {
+      var services = "";
+      for (var i = 0; i < provider.services.length; i++) {
+        if (i !== 0) {
+          services += ",";
+        }
+        services += provider.services[i].id;
+      }
+      url += "&serviceIds=" + encodeURIComponent(services);
+    }
+    url += "&callback=" + encodeURIComponent(window.location.href);
+    return url;
+  }
 }
 
 window.customElements.define(BraidService.is, BraidService);
