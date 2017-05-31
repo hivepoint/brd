@@ -2,12 +2,11 @@ import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../inter
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser, serviceProviders } from "../../db";
-import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
 import { ServiceProviderDescriptor, ProviderUserProfile, ProviderAccountProfile } from "../../interfaces/service-provider";
-import { gmailSearcher } from "./gmail-searcher";
-import { GoogleSearcher } from "./google-searcher";
-import { googleDriveSearcher } from "./drive-searcher";
+import { gmailService } from "./gmail-service";
+import { GoogleService } from "./google-service";
+import { googleDriveService } from "./google-drive-service";
 import { Startable } from "../../interfaces/startable";
 import url = require('url');
 import { urlManager } from "../../url-manager";
@@ -49,7 +48,7 @@ export class GoogleProvider implements RestServer, Startable {
   }
 
   async start(context: Context): Promise<void> {
-    await serviceProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true), null);
+    await serviceProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true));
   }
 
   async handleServiceProvider(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -60,8 +59,8 @@ export class GoogleProvider implements RestServer, Startable {
       authUrl: urlManager.getDynamicUrl(context, AUTH_URL, true),
       services: []
     };
-    description.services.push(gmailSearcher.getDescriptor(context));
-    description.services.push(googleDriveSearcher.getDescriptor(context));
+    description.services.push(gmailService.getDescriptor(context));
+    description.services.push(googleDriveService.getDescriptor(context));
     return new RestServiceResult(description);
   }
 
@@ -79,17 +78,17 @@ export class GoogleProvider implements RestServer, Startable {
       return new RestServiceResult(null, 400, "Missing serviceIds param");
     }
     const serviceIds = serviceIdString.split(',');
-    const services: GoogleSearcher[] = [];
+    const services: GoogleService[] = [];
     const scopes: string[] = ['https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'];
     const scopedServiceIds: string[] = [];
     for (const serviceId of serviceIds) {
       switch (serviceId.trim().toLowerCase()) {
-        case gmailSearcher.getDescriptor(context).id:
-          this.addScopes(scopes, gmailSearcher.getOauthScopes());
+        case gmailService.getDescriptor(context).id:
+          this.addScopes(scopes, gmailService.getOauthScopes());
           scopedServiceIds.push(serviceId);
           break;
-        case googleDriveSearcher.getDescriptor(context).id:
-          this.addScopes(scopes, googleDriveSearcher.getOauthScopes());
+        case googleDriveService.getDescriptor(context).id:
+          this.addScopes(scopes, googleDriveService.getOauthScopes());
           scopedServiceIds.push(serviceId);
           break;
         default:

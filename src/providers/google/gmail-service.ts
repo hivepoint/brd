@@ -2,10 +2,9 @@ import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../inter
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
-import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
-import { ServiceDescriptor } from "../../interfaces/service-provider";
-import { GoogleSearcher } from "./google-searcher";
+import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult } from "../../interfaces/service-provider";
+import { GoogleService } from "./google-service";
 import { urlManager } from "../../url-manager";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -32,16 +31,16 @@ interface GmailMatchDetails {
   cc: EmailAddress[];
 }
 
-const SEARCH_URL = '/svc/google/search/gmail';
+const SERVICE_URL = '/svc/google/gmail';
 const SERVICE_ID = 'com.hivepoint.google.gmail';
-export class GmailSearcher extends GoogleSearcher {
+export class GmailService extends GoogleService {
 
   getDescriptor(context: Context): ServiceDescriptor {
     return {
       id: SERVICE_ID,
       name: 'Gmail',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/gmail.png'),
-      searchUrl: urlManager.getDynamicUrl(context, SEARCH_URL, true)
+      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
     };
   }
 
@@ -50,7 +49,8 @@ export class GmailSearcher extends GoogleSearcher {
   }
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SEARCH_URL, true, false);
+    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.search, true, false);
+    registrar.registerHandler(context, this.handleFeed.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.feed, true, false);
   }
 
   async handleSearch(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -94,7 +94,7 @@ export class GmailSearcher extends GoogleSearcher {
               for (const item of getResponses) {
                 if (item.body && item.body.id) {
                   const details = this.getEmailDetails(item, googleUser);
-                  const match: SearchMatch = {
+                  const match: FeedItem = {
                     providerId: this.PROVIDER_ID,
                     serviceId: SERVICE_ID,
                     iconUrl: '/s/svcs/google/msg.png',
@@ -191,8 +191,13 @@ export class GmailSearcher extends GoogleSearcher {
     }
     return null;
   }
+
+  async handleFeed(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    return null;
+  }
+
 }
 
-const gmailSearcher = new GmailSearcher();
+const gmailService = new GmailService();
 
-export { gmailSearcher };
+export { gmailService };

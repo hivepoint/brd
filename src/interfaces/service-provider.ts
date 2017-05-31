@@ -1,3 +1,8 @@
+export const SERVICE_URL_SUFFIXES = {
+  search: '/search',
+  feed: '/feed'
+};
+
 export interface ProviderAccountProfile {
   accountId: string; // e.g., Google internal userId for kduffie@hivepoint.com
   name: string; // e.g., Kingston Duffie
@@ -16,7 +21,7 @@ export interface ServiceDescriptor {
   id: string;  // e.g., com.hivepoint.search.google
   name: string;  // e.g. Gmail
   logoSquareUrl: string; // e.g., gmail icon
-  searchUrl: string;  // the API to get to the REST service handling gmail search
+  serviceUrl: string;  // the base API for REST services
 }
 
 export interface ServiceProviderDescriptor {
@@ -25,4 +30,20 @@ export interface ServiceProviderDescriptor {
   logoSquareUrl: string; // e.g., google icon
   authUrl: string;  // the URL to redirect to to initiate OAUTH
   services: ServiceDescriptor[];  // one for each service supported on Google
+}
+
+export interface FeedItem {
+  providerId: string;
+  serviceId: string;
+  iconUrl: string;
+  details: any;
+  url?: string;
+}
+
+export interface SearchResult {
+  matches: FeedItem[];
+}
+
+export interface FeedResult {
+  items: FeedItem[];
 }
