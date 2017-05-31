@@ -2,7 +2,9 @@ import { Startable } from "./interfaces/startable";
 import { ServiceProviderDescriptor, ProviderUserProfile } from "./interfaces/service-provider";
 import { Context } from "./interfaces/context";
 import { serviceProviders, SearchProvider } from "./db";
-const Client = require('node-rest-client').Client;
+import { RestClient } from "./utils/rest-client";
+import { logger } from "./utils/logger";
+import { utils } from "./utils/utils";
 
 export class ServicesManager implements Startable {
   private providers: SearchProvider[] = [];
@@ -29,24 +31,13 @@ export class ServicesManager implements Startable {
   }
 
   private async loadProvider(context: Context, provider: SearchProvider): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      const client = new Client();
-      const args = {
-        parameters: {},
-        requestConfig: {
-          timeout: 10000
-        },
-        responseConfig: {
-          timeout: 10000
-        }
-      };
-      client.get(provider.serviceUrl, args, (data: ServiceProviderDescriptor, response: Response) => {
-        this.providerDescriptors.push(data);
-        resolve();
-      }).on('error', (err: any) => {
-        reject(err);
-      });
-    });
+    try {
+      logger.log(context, 'services', 'loadProvider', "Loading provider: " + provider.id);
+      const descriptor = await RestClient.get<ServiceProviderDescriptor>(provider.serviceUrl, {});
+      this.providerDescriptors.push(descriptor);
+    } catch (err) {
+      logger.error(context, 'services', 'loadProvider', 'Load failure', utils.logErrorObject(err));
+    }
   }
 
   private getProviderById(id: string): SearchProvider {
@@ -63,23 +54,7 @@ export class ServicesManager implements Startable {
     if (!provider) {
       throw new Error("No such provider");
     }
-    return new Promise<ProviderUserProfile>((resolve, reject) => {
-      const client = new Client();
-      const args = {
-        parameters: { braidUserId: braidUserId },
-        requestConfig: {
-          timeout: 10000
-        },
-        responseConfig: {
-          timeout: 10000
-        }
-      };
-      client.get(provider.serviceUrl + '/profile', args, (data: ProviderUserProfile, response: Response) => {
-        resolve(data);
-      }).on('error', (err: any) => {
-        reject(err);
-      });
-    });
+    return await RestClient.get<ProviderUserProfile>(provider.serviceUrl + '/profile', { braidUserId: braidUserId }, 10000, 10000);
   }
 
 }

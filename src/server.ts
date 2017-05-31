@@ -21,7 +21,7 @@ import { emailManager } from "./email-manager";
 import { database } from "./db";
 import { waitingListManager } from "./waiting-list-manager";
 import { userManager } from "./user-manager";
-import { searchRestServer } from "./search-rest-server";
+import { servicesRestServer } from "./services-rest-server";
 import { googleProvider } from "./providers/google/google-provider";
 import { gmailSearcher } from "./providers/google/gmail-searcher";
 import { googleDriveSearcher } from "./providers/google/drive-searcher";
@@ -38,7 +38,7 @@ export class Server implements RestServiceRegistrar {
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
-  private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, searchRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
+  private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, servicesRestServer, googleProvider, gmailSearcher, googleDriveSearcher];
   private initializables: Initializable[] = [rootPageHandler, emailManager, database];
   private startables: Startable[] = [googleProvider, servicesManager];
   private serverStatus = 'starting';

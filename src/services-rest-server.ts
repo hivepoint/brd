@@ -10,7 +10,7 @@ import { SearchResult } from "./interfaces/search-match";
 import { ProviderAccountProfile, ServiceProviderDescriptor, ServiceDescriptor } from "./interfaces/service-provider";
 import { v4 as uuid } from 'node-uuid';
 import { servicesManager } from "./services-manager";
-const Client = require('node-rest-client').Client;
+import { RestClient } from "./utils/rest-client";
 
 export interface ProviderListing {
   descriptor: ServiceProviderDescriptor;
@@ -41,7 +41,7 @@ export interface SearchRestResponse {
   serviceResults: SearchRestResult[];
 }
 
-export class ServiceRestServer implements RestServer {
+export class ServicesRestServer implements RestServer {
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleServices.bind(this), 'get', '/services', true, false);
@@ -66,6 +66,7 @@ export class ServiceRestServer implements RestServer {
       }
       result.providers.push(item);
     }
+    logger.log(context, 'services-rest', 'handleServices', 'Fetched services', result);
     return new RestServiceResult(result);
   }
 
@@ -77,6 +78,7 @@ export class ServiceRestServer implements RestServer {
     const searchId = 's-' + uuid();
     const result: SearchRestResponse = { searchId: searchId, serviceResults: [] };
     if (context.user) {
+      logger.log(context, 'services-rest', 'handleSearch', 'Initiating search', searchId, searchString);
       const searchables: Serviceable[] = [];
       const accts = await providerAccounts.findByUser(context, context.user.id);
       for (const acct of accts) {
@@ -100,7 +102,7 @@ export class ServiceRestServer implements RestServer {
         }
         const promises: Array<Promise<void>> = [];
         for (const searchable of searchables) {
-          promises.push(this.initiateService(context, searchId, searchable, searchString));
+          promises.push(this.initiateSearch(context, searchId, searchable, searchString));
         }
         await Promise.race(promises); // Wait until at least one has completed
         return await this.handleServicePollInternal(context, searchId, request, response);
@@ -145,43 +147,19 @@ export class ServiceRestServer implements RestServer {
     return new RestServiceResult(result);
   }
 
-  private async initiateService(context: Context, searchId: string, searchable: Serviceable, searchString: string): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      const client = new Client();
-      const args = {
-        parameters: { braidUserId: context.user.id, accountId: searchable.account.accountId, q: searchString },
-        requestConfig: {
-          timeout: 120000
-        },
-        responseConfig: {
-          timeout: 120000
-        }
-      };
-      client.get(searchable.service.searchUrl, args, (data: SearchResult, response: Response) => {
-        if (data) {
-          void serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, data.matches).then(() => {
-            void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false).then(() => {
-              resolve();
-            });
-          });
-        } else {
-          void providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', "No search data returned", clock.now()).then(() => {
-            void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, "No search data returned").then(() => {
-              resolve();
-            });
-          });
-        }
-      }).on('error', (err: any) => {
-        void providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', err.toString(), clock.now()).then(() => {
-          void serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, err.toString()).then(() => {
-            resolve();
-          });
-        });
-      });
-    });
+  private async initiateSearch(context: Context, searchId: string, searchable: Serviceable, searchString: string): Promise<void> {
+    try {
+      const searchResult = await RestClient.get<SearchResult>(searchable.service.searchUrl, { braidUserId: context.user.id, accountId: searchable.account.accountId, q: searchString });
+      await serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, searchResult.matches);
+      await serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false);
+    } catch (err) {
+      logger.error(context, 'services', 'loadProvider', 'Failure loading provider', utils.logErrorObject(err));
+      await providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', err.toString(), clock.now());
+      await serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, err.toString());
+    }
   }
 }
 
-const searchRestServer = new ServiceRestServer();
+const servicesRestServer = new ServicesRestServer();
 
-export { searchRestServer };
+export { servicesRestServer };
