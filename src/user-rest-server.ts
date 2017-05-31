@@ -8,10 +8,11 @@ import { userManager } from "./user-manager";
 import { searchManager } from "./search-manager";
 import { providerAccounts } from "./db";
 import { ProviderAccountProfile } from "./interfaces/search-provider";
+import { urlManager } from "./url-manager";
 
 export class UserRestServer implements RestServer {
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleProviderAuthRequest.bind(this), 'get', '/user/svc/auth/request', true, false);
+    registrar.registerHandler(context, this.handleProviderAuthRequest.bind(this), 'get', '/user/svc/auth', true, false);
     registrar.registerHandler(context, this.handleProviderAuthCallback.bind(this), 'get', '/user/svc/auth/callback', true, false);
   }
 
@@ -37,8 +38,8 @@ export class UserRestServer implements RestServer {
       return new RestServiceResult(null, 400, "callback param missing");
     }
     const user = await userManager.getOrCreateUser(context, request, response);
-    const callbackUrl = url.resolve(context.getConfig('baseClientUri'), "/d/user/svc/auth/callback?braidUserId=" + encodeURIComponent(user.id) + "&providerId=" + encodeURIComponent(provider.id) + "&callback=" + encodeURIComponent(userCallbackUrl));
-    const redirectUri = provider.authUrl + (provider.authUrl.indexOf('?') < 0 ? '?' : '&') + 'braidUserId=' + encodeURIComponent(user.id) + '&callbackUrl=' + encodeURIComponent(callbackUrl);
+    const callbackUrl = urlManager.getDynamicUrl(context, "/user/svc/auth/callback?braidUserId=" + encodeURIComponent(user.id) + "&providerId=" + encodeURIComponent(provider.id) + "&callback=" + encodeURIComponent(userCallbackUrl), true);
+    const redirectUri = provider.authUrl + (provider.authUrl.indexOf('?') < 0 ? '?' : '&') + 'braidUserId=' + encodeURIComponent(user.id) + '&serviceIds=' + encodeURIComponent(serviceIds.join(',')) + '&callback=' + encodeURIComponent(callbackUrl);
     return new RestServiceResult(null, null, null, redirectUri);
   }
 

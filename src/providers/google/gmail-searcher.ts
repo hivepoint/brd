@@ -6,6 +6,7 @@ import { SearchMatch, SearchResult } from "../../interfaces/search-match";
 import { utils } from "../../utils/utils";
 import { SearchServiceDescriptor } from "../../interfaces/search-provider";
 import { GoogleSearcher } from "./google-searcher";
+import { urlManager } from "../../url-manager";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -32,15 +33,15 @@ interface GmailMatchDetails {
 }
 
 const SEARCH_URL = '/svc/google/search/gmail';
-const SERVICE_ID = 'com.hivepoint.search.google.gmail';
+const SERVICE_ID = 'com.hivepoint.google.gmail';
 export class GmailSearcher extends GoogleSearcher {
 
-  getDescriptor(): SearchServiceDescriptor {
+  getDescriptor(context: Context): SearchServiceDescriptor {
     return {
       id: SERVICE_ID,
       name: 'Gmail',
-      logoSquareUrl: '/s/svcs/google/gmail.png',
-      searchUrl: '/d' + SEARCH_URL
+      logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/gmail.png'),
+      searchUrl: urlManager.getDynamicUrl(context, SEARCH_URL, true)
     };
   }
 

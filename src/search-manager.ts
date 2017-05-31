@@ -74,7 +74,7 @@ export class SearchManager implements Startable {
           timeout: 10000
         }
       };
-      client.get(provider.serviceUrl, args, (data: ProviderUserProfile, response: Response) => {
+      client.get(provider.serviceUrl + '/profile', args, (data: ProviderUserProfile, response: Response) => {
         resolve(data);
       }).on('error', (err: any) => {
         reject(err);

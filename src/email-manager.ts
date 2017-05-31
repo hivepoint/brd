@@ -6,6 +6,7 @@ import nodemailer = require('nodemailer');
 import { Initializable } from './interfaces/initializable';
 import { logger, LoggerEmailHandler } from './utils/logger';
 import url = require('url');
+import { urlManager } from "./url-manager";
 
 export interface EmailButton {
   caption: string;
@@ -61,7 +62,7 @@ export class EmailManager implements Initializable, LoggerEmailHandler {
 
     const taglines = ["Search your own stuff"];
     const tagLine = taglines[Math.round(Math.random() * (taglines.length - 1))];
-    const kaiLogoUrl = url.resolve(context.getConfig('baseClientUri'), '/s/images/logos/logo_800.png');
+    const kaiLogoUrl = urlManager.getStaticUrl(context, '/images/logos/logo_800.png');
     const htmlContent = Mustache.render(baseHtml, {
       messageBody: htmlBody,
       buttons: buttonsBodyHtml,

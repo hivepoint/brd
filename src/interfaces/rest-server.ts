@@ -18,8 +18,6 @@ export class RestServiceResult {
 export type RestServiceHandler = (context: Context, request: Request, response: Response) => Promise<RestServiceResult>;
 
 export interface RestServiceRegistrar {
-  getPublicBase(): string;
-  getDynamicBase(): string;
   registerHandler(context: Context, handler: RestServiceHandler, action: string, suffix: string, dynamic: boolean, cacheable: boolean): void;
 }
 
