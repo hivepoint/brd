@@ -37,6 +37,7 @@ class BraidApp extends Polymer.Element {
 
   refreshLayout() {
     this.$.topBuffer.style.height = this.$.toolbar.offsetHeight + "px";
+    this.closeMenu();
     this.refreshScrollPosition();
   }
 
@@ -48,6 +49,16 @@ class BraidApp extends Polymer.Element {
       this.$.toolbarSub.style.opacity = ht / offsetHeight;
       this._prevBarHeight = ht;
     }
+  }
+
+  showMenu() {
+    this.$.glass.style.display = "";
+    this.$.rightDrawer.style.right = 0;
+  }
+
+  closeMenu() {
+    this.$.glass.style.display = "none";
+    this.$.rightDrawer.style.right = "";
   }
 }
 

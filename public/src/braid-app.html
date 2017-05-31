@@ -1,5 +1,6 @@
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
 <link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="braid-icons.html">
 
 <dom-module id="braid-app">
   <template>
@@ -29,10 +30,10 @@
         position: relative;
       }
 
-      #rightBuffer {
+      #rightDrawer {
         width: 300px;
         background: #eee;
-        transition: width 0.4s ease;
+        transition: right 0.5s ease;
       }
 
       #topBuffer {
@@ -83,7 +84,8 @@
       }
 
       .follow {
-        background: rgba(81, 132, 233, 0.8);
+        background: rgba(81, 132, 233, 0.6);
+        border: 1px solid rgba(81, 132, 233, 1);
         display: inline-block;
         white-space: nowrap;
         padding: 0 5px;
@@ -96,6 +98,41 @@
       .follow:hover {
         background: rgba(81, 132, 233, 1);
         box-shadow: 0 3px 3px -1px rgba(0, 0, 0, 0.4);
+      }
+
+      iron-icon {
+        cursor: pointer;
+        color: white;
+        --iron-icon-height: 32px;
+        --iron-icon-width: 32px;
+        padding: 7px;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+      }
+
+      iron-icon:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      #btnApps {
+        display: none;
+      }
+
+      #glass {
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      @media (max-width: 1000px) {
+        #btnApps {
+          display: initial;
+        }
+        #rightDrawer {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          right: -350px;
+          box-shadow: -2px 0 10px -1px rgba(0, 0, 0, 0.6);
+        }
       }
     </style>
     <div id="shell" class="horizontal layout">
@@ -171,6 +208,12 @@
               <img id="barLogo" src="/s/images/logos/logo_white_40.png">
             </div>
             <div class="flex"></div>
+            <div>
+              <iron-icon icon="braid:search"></iron-icon>
+            </div>
+            <div id="btnApps">
+              <iron-icon icon="braid:apps" on-click="showMenu"></iron-icon>
+            </div>
           </div>
           <div id="toolbarSub">
             <div id="toolbarSubContent">
@@ -182,10 +225,11 @@
             </div>
           </div>
         </div>
-        <div id="rightBuffer">
-        </div>
+        <div id="glass" class="fillContainer" on-click="closeMenu" style="display: none;"></div>
       </div>
-      <braid-service id="service"></braid-service>
+      <div id="rightDrawer"></div>
+    </div>
+    <braid-service id="service"></braid-service>
   </template>
   <script src="braid-app.js"></script>
   <script src="common/braid-service.js" async></script>
