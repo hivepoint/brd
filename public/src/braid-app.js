@@ -10,6 +10,8 @@ class BraidApp extends Polymer.Element {
     Polymer.RenderStatus.beforeNextRender(this, () => {
       this.refreshLayout();
     });
+
+    this.refreshServices();
   }
 
   onScroll() {
@@ -59,6 +61,14 @@ class BraidApp extends Polymer.Element {
   closeMenu() {
     this.$.glass.style.display = "none";
     this.$.rightDrawer.style.right = "";
+  }
+
+  refreshServices() {
+    $service.getServices().then((services) => {
+      console.log("services", services);
+    }).catch((err) => {
+      console.error(err);
+    });
   }
 }
 

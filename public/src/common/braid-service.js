@@ -89,6 +89,10 @@ class BraidService extends Polymer.Element {
     const request = { email: emailAddress };
     return this.rest.post(this.restBase + "/waitingList", request);
   }
+
+  getServices() {
+    return this.rest.getJson(this.restBase + "/services");
+  }
 }
 
 window.customElements.define(BraidService.is, BraidService);
