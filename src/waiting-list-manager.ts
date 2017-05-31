@@ -38,4 +38,4 @@ export class WaitingListManager implements RestServer {
 
 const waitingListManager = new WaitingListManager();
 
-export { waitingListManager }
+export { waitingListManager };
