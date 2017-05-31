@@ -2,10 +2,11 @@ import path = require('path');
 import fs = require('fs');
 import url = require('url');
 import Mustache = require('mustache');
+import { Request, Response } from 'express';
 import { Initializable } from '../interfaces/initializable';
 import { RestServer, RestServiceRegistrar, RestServiceResult } from '../interfaces/rest-server';
 import { Context } from '../interfaces/context';
-import { Request, Response } from 'express';
+import { urlManager } from "../url-manager";
 
 export class RootPageHandler implements RestServer, Initializable {
   indexContent: string;
@@ -34,8 +35,8 @@ export class RootPageHandler implements RestServer, Initializable {
     };
 
     const view = {
-      public_base: this.registrar.getPublicBase(),
-      rest_base: this.registrar.getDynamicBase(),
+      public_base: urlManager.getPublicBaseUrl(context),
+      rest_base: urlManager.getDynamicBaseUrl(context),
       og_title: metadata.title,
       og_description: metadata.description,
       og_url: ogUrl,
