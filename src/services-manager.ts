@@ -17,7 +17,15 @@ export class ServicesManager implements Startable {
     }
   }
 
-  getProviderDescriptors(): ServiceProviderDescriptor[] {
+  getProviderDescriptors(context: Context, hideInternals: boolean): ServiceProviderDescriptor[] {
+    let result: ServiceProviderDescriptor[];
+    result = JSON.parse(JSON.stringify(this.providerDescriptors));
+    for (const item of result) {
+      delete item.authUrl;
+      for (const service of item.services) {
+        delete service.serviceUrl;
+      }
+    }
     return this.providerDescriptors;
   }
 

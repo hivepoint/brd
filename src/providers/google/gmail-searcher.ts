@@ -32,7 +32,8 @@ interface GmailMatchDetails {
   cc: EmailAddress[];
 }
 
-const SEARCH_URL = '/svc/google/search/gmail';
+const SERVICE_URL = '/svc/google/gmail';
+const SEARCH_URL = SERVICE_URL + '/search';
 const SERVICE_ID = 'com.hivepoint.google.gmail';
 export class GmailSearcher extends GoogleSearcher {
 
@@ -41,7 +42,7 @@ export class GmailSearcher extends GoogleSearcher {
       id: SERVICE_ID,
       name: 'Gmail',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/gmail.png'),
-      searchUrl: urlManager.getDynamicUrl(context, SEARCH_URL, true)
+      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
     };
   }
 

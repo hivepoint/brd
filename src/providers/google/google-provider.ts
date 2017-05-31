@@ -49,7 +49,7 @@ export class GoogleProvider implements RestServer, Startable {
   }
 
   async start(context: Context): Promise<void> {
-    await serviceProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true), null);
+    await serviceProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true));
   }
 
   async handleServiceProvider(context: Context, request: Request, response: Response): Promise<RestServiceResult> {

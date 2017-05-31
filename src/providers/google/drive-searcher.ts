@@ -12,7 +12,8 @@ const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
-const SEARCH_URL = '/svc/google/search/drive';
+const SERVICE_URL = '/svc/google/drive';
+const SEARCH_URL = SERVICE_URL + '/search';
 const SERVICE_ID = 'com.hivepoint.google.drive';
 
 export class GoogleDriveSearcher extends GoogleSearcher {
@@ -22,7 +23,7 @@ export class GoogleDriveSearcher extends GoogleSearcher {
       id: SERVICE_ID,
       name: 'Drive',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/drive.png'),
-      searchUrl: urlManager.getDynamicUrl(context, SEARCH_URL, true)
+      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
     };
   }
 

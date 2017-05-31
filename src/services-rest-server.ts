@@ -12,8 +12,21 @@ import { v4 as uuid } from 'node-uuid';
 import { servicesManager } from "./services-manager";
 import { RestClient } from "./utils/rest-client";
 
+export interface ServiceDescriptorResponse {
+  id: string;  // e.g., com.hivepoint.search.google
+  name: string;  // e.g. Gmail
+  logoSquareUrl: string; // e.g., gmail icon
+}
+
+export interface ServiceProviderDescriptorResponse {
+  id: string;  // e.g., 'com.hivepoint.search.google'
+  name: string; // e.g., 'Google'
+  logoSquareUrl: string; // e.g., google icon
+  services: ServiceDescriptorResponse[];
+}
+
 export interface ProviderListing {
-  descriptor: ServiceProviderDescriptor;
+  descriptor: ServiceProviderDescriptorResponse;
 
   accounts: ProviderAccount[];
 }
@@ -22,10 +35,10 @@ export interface ProviderListingResponse {
   providers: ProviderListing[];
 }
 
-interface Serviceable {
+interface Service {
   account: ProviderAccount;
   provider: ServiceProviderDescriptor;
-  service: ServiceDescriptor;
+  descriptor: ServiceDescriptor;
 }
 
 export interface SearchRestResult {
@@ -52,7 +65,7 @@ export class ServicesRestServer implements RestServer {
   async handleServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
     const result: ProviderListingResponse = { providers: [] };
     const accts = await providerAccounts.findByUser(context, context.user.id);
-    for (const provider of servicesManager.getProviderDescriptors()) {
+    for (const provider of servicesManager.getProviderDescriptors(context, true)) {
       const item: ProviderListing = {
         descriptor: provider,
         accounts: []
@@ -79,30 +92,30 @@ export class ServicesRestServer implements RestServer {
     const result: SearchRestResponse = { searchId: searchId, serviceResults: [] };
     if (context.user) {
       logger.log(context, 'services-rest', 'handleSearch', 'Initiating search', searchId, searchString);
-      const searchables: Serviceable[] = [];
+      const services: Service[] = [];
       const accts = await providerAccounts.findByUser(context, context.user.id);
       for (const acct of accts) {
-        for (const provider of servicesManager.getProviderDescriptors()) {
+        for (const provider of servicesManager.getProviderDescriptors(context, false)) {
           if (acct.providerId === provider.id) {
-            for (const service of provider.services) {
-              if (acct.profile.serviceIds && acct.profile.serviceIds.indexOf(service.id) >= 0) {
-                searchables.push({
+            for (const serviceDescriptor of provider.services) {
+              if (acct.profile.serviceIds && acct.profile.serviceIds.indexOf(serviceDescriptor.id) >= 0) {
+                services.push({
                   account: acct,
                   provider: provider,
-                  service: service
+                  descriptor: serviceDescriptor
                 });
               }
             }
           }
         }
       }
-      if (searchables.length > 0) {
-        for (const searchable of searchables) {
-          await serviceSearchResults.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, true, false);
+      if (services.length > 0) {
+        for (const service of services) {
+          await serviceSearchResults.insertRecord(context, searchId, service.provider.id, service.descriptor.id, true, false);
         }
         const promises: Array<Promise<void>> = [];
-        for (const searchable of searchables) {
-          promises.push(this.initiateSearch(context, searchId, searchable, searchString));
+        for (const service of services) {
+          promises.push(this.initiateSearch(context, searchId, service, searchString));
         }
         await Promise.race(promises); // Wait until at least one has completed
         return await this.handleServicePollInternal(context, searchId, request, response);
@@ -147,15 +160,15 @@ export class ServicesRestServer implements RestServer {
     return new RestServiceResult(result);
   }
 
-  private async initiateSearch(context: Context, searchId: string, searchable: Serviceable, searchString: string): Promise<void> {
+  private async initiateSearch(context: Context, searchId: string, service: Service, searchString: string): Promise<void> {
     try {
-      const searchResult = await RestClient.get<SearchResult>(searchable.service.searchUrl, { braidUserId: context.user.id, accountId: searchable.account.accountId, q: searchString });
-      await serviceSearchMatches.insertRecord(context, searchId, searchable.provider.id, searchable.service.id, searchResult.matches);
-      await serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false);
+      const searchResult = await RestClient.get<SearchResult>(service.descriptor.serviceUrl + '/search', { braidUserId: context.user.id, accountId: service.account.accountId, q: searchString });
+      await serviceSearchMatches.insertRecord(context, searchId, service.provider.id, service.descriptor.id, searchResult.matches);
+      await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, false);
     } catch (err) {
       logger.error(context, 'services', 'loadProvider', 'Failure loading provider', utils.logErrorObject(err));
-      await providerAccounts.updateState(context, context.user.id, searchable.provider.id, searchable.account.accountId, 'error', err.toString(), clock.now());
-      await serviceSearchResults.updateState(context, searchId, searchable.provider.id, searchable.service.id, false, err.toString());
+      await providerAccounts.updateState(context, context.user.id, service.provider.id, service.account.accountId, 'error', err.toString(), clock.now());
+      await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, false, err.toString());
     }
   }
 }

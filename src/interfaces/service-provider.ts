@@ -16,7 +16,7 @@ export interface ServiceDescriptor {
   id: string;  // e.g., com.hivepoint.search.google
   name: string;  // e.g. Gmail
   logoSquareUrl: string; // e.g., gmail icon
-  searchUrl: string;  // the API to get to the REST service handling gmail search
+  serviceUrl: string;  // the base API for REST services
 }
 
 export interface ServiceProviderDescriptor {
