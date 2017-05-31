@@ -12,22 +12,8 @@ import { v4 as uuid } from 'node-uuid';
 import { servicesManager } from "./services-manager";
 import { RestClient } from "./utils/rest-client";
 
-export interface ServiceDescriptorResponse {
-  id: string;  // e.g., com.hivepoint.search.google
-  name: string;  // e.g. Gmail
-  logoSquareUrl: string; // e.g., gmail icon
-}
-
-export interface ServiceProviderDescriptorResponse {
-  id: string;  // e.g., 'com.hivepoint.search.google'
-  name: string; // e.g., 'Google'
-  logoSquareUrl: string; // e.g., google icon
-  services: ServiceDescriptorResponse[];
-}
-
 export interface ProviderListing {
-  descriptor: ServiceProviderDescriptorResponse;
-
+  descriptor: ServiceProviderDescriptor;
   accounts: ProviderAccount[];
 }
 
@@ -58,13 +44,16 @@ export class ServicesRestServer implements RestServer {
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleServices.bind(this), 'get', '/services', true, false);
-    registrar.registerHandler(context, this.handleSearch.bind(this), 'post', '/search', true, false);
-    registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'post', '/search/poll', true, false);
+    registrar.registerHandler(context, this.handleSearch.bind(this), 'poll', '/search', true, false);
+    registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'poll', '/search/poll', true, false);
   }
 
   async handleServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
     const result: ProviderListingResponse = { providers: [] };
-    const accts = await providerAccounts.findByUser(context, context.user.id);
+    let accts: ProviderAccount[] = [];
+    if (context.user) {
+      accts = await providerAccounts.findByUser(context, context.user.id);
+    }
     for (const provider of servicesManager.getProviderDescriptors(context, true)) {
       const item: ProviderListing = {
         descriptor: provider,

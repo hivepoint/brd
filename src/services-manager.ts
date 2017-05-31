@@ -18,6 +18,9 @@ export class ServicesManager implements Startable {
   }
 
   getProviderDescriptors(context: Context, hideInternals: boolean): ServiceProviderDescriptor[] {
+    if (!hideInternals) {
+      return this.providerDescriptors;
+    }
     let result: ServiceProviderDescriptor[];
     result = JSON.parse(JSON.stringify(this.providerDescriptors));
     for (const item of result) {
@@ -26,7 +29,7 @@ export class ServicesManager implements Startable {
         delete service.serviceUrl;
       }
     }
-    return this.providerDescriptors;
+    return result;
   }
 
   getProviderDescriptorById(id: string): ServiceProviderDescriptor {
