@@ -5,12 +5,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
   <title>Braid</title>
-  <meta name="description" content="braid description">
+  <meta name="description" content="{{&og_description}}">
   <link rel="manifest" href="/manifest.json">
 
+  <meta property="og:title" content="{{&og_title}}">
+  <meta property="og:description" content="{{&og_description}}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{&og_url}}">
+  <meta property="og:image" content="{{&og_image}}">
+  <meta property="og:image:width" content="{{&og_imagewidth}}">
+  <meta property="og:image:height" content="{{&og_imageheight}}">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@braidapp">
+  <meta name="twitter:title" content="{{&og_title}}">
+  <meta name="twitter:description" content="{{&og_description}}">
+  <meta name="twitter:image" content="{{&og_image}}">
+  <meta name="twitter:image:width" content="{{&og_imagewidth}}">
+  <meta name="twitter:image:height" content="{{&og_imageheight}}">
+
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,600" rel="stylesheet">
-  <script src="/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
-  <link rel="import" href="/src/home/home-page.html">
+  <link rel="import" href="{{&public_base}}/src/home/home-page.html">
+  <link id="restBase" rel="session" href="{{&rest_base}}">
+  <script src="{{&public_base}}/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+
   <style>
     body {
       margin: 0;
