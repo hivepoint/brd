@@ -1,0 +1,37 @@
+<link rel="import" href="../../../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<dom-module id="email-card">
+  <template>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
+       :host {
+        display: block;
+      }
+    </style>
+    <div id="header" class="horizontal layout">
+      <div class="mailIconCell">
+        <img class="mailIcon" src$="{{data.iconUrl}}" />
+      </div>
+      <div class="flex addressCell">
+        <div class="horizontal layout">
+          <div class="from flex">{{data.details.from.name}}</div>
+          <div class="timestamp">{{data.timestamp}}</div>
+        </div>
+        <div class="to">
+          To you and 3 others
+        </div>
+      </div>
+    </div>
+    <div class="subject">{{data.details.subject}}</div>
+    <div class="snippet">{{data.details.snippet}}</div>
+  </template>
+  <script>
+    class EmailCard extends Polymer.Element {
+      static get is() { return 'email-card'; }
+      static get properties() {
+        return {
+          data: Object
+        };
+      }
+    }
+    window.customElements.define(EmailCard.is, EmailCard);
+  </script>
+</dom-module>

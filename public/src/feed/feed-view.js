@@ -17,7 +17,7 @@ class FeedView extends Polymer.Element {
     var items = [];
     for (var i = 0; i < 3; i++) {
       items.push({
-        cardType: "dummy"
+        serviceId: "dummy"
       });
     }
     this.set("items", items);

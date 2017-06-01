@@ -84,9 +84,19 @@ class BraidApp extends Polymer.Element {
         this.$.drawerContentPanel.style.opacity = 1;
       });
 
+      var hasAccounts = false;
+      if (response.providers && response.providers.length) {
+        for (var i = 0; i < response.providers.length; i++) {
+          if (response.providers[i].accounts && response.providers[i].accounts.length) {
+            hasAccounts = true;
+            break;
+          }
+        }
+      }
+
       Polymer.importHref(this.resolveUrl('feed/feed-view.html'), () => {
-        this.$.watermark.style.display = "";
-        this.$.feed.refresh(true);
+        this.$.watermark.style.display = hasAccounts ? "none" : "";
+        this.$.feed.refresh(!hasAccounts);
       });
     }).catch((err) => {
       console.error(err);
