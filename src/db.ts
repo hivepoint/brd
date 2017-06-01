@@ -10,6 +10,7 @@ import { serviceSearchResults } from './db/service-search-result';
 import { serviceSearchMatches } from './db/service-search-matches';
 
 import { googleUsers } from './db/google-users-collection';
+import { googleObjectCache } from './db/google-object-cache';
 
 export * from './db/waiting-list-collection';
 export * from './db/service-providers-collection';
@@ -19,6 +20,7 @@ export * from './db/service-search-result';
 export * from './db/service-search-matches';
 
 export * from './db/google-users-collection';
+export * from './db/google-object-cache';
 
 export class Database implements Initializable {
   async initialize(context: Context): Promise<void> {
@@ -33,6 +35,7 @@ export class Database implements Initializable {
     await serviceSearchMatches.ensureOpen(context);
 
     await googleUsers.ensureOpen(context);
+    await googleObjectCache.ensureOpen(context);
   }
 }
 
