@@ -156,6 +156,25 @@
         box-shadow: -2px -3px 5px -1px rgba(0, 0, 0, 0.3);
       }
 
+      #searchTextPanel {
+        padding: 0 0 0 12px;
+        text-align: right;
+      }
+
+      #txtSearch {
+        outline: none;
+        width: 0%;
+        box-sizing: border-box;
+        font-family: 'Roboto', 'Noto', sans-serif;
+        font-weight: 400;
+        padding: 0;
+        font-size: 16px;
+        border: none;
+        height: 46px;
+        border-radius: 5px 0 0 5px;
+        transition: all 0.5s ease;
+      }
+
       @media (max-width: 1000px) {
         #btnApps {
           display: initial;
@@ -175,7 +194,8 @@
         <div id="scrollPanel" class="fillContainer verticalScroll" on-scroll="onScroll">
           <div id="topBuffer"></div>
           <div id="contentPanel" style="font-size: 20px;">
-            <feed-view id="feed"></feed-view>
+            <feed-view id="feedView"></feed-view>
+            <search-view id="searchView"></search-view>
           </div>
         </div>
         <div id="toolbar">
@@ -183,9 +203,12 @@
             <div>
               <img id="barLogo" src="/s/images/logos/logo_white_40.png">
             </div>
-            <div class="flex"></div>
-            <div>
-              <iron-icon icon="braid:search"></iron-icon>
+            <div id="barBuffer" class="flex"></div>
+            <div id="searchTextPanel" class="flex" style="display: none;">
+              <input id="txtSearch" type="text" />
+            </div>
+            <div id="btnSearch" style="display: none;">
+              <iron-icon id="searchIcon" icon="braid:search" on-click="onSearch"></iron-icon>
             </div>
             <div id="btnApps">
               <iron-icon icon="braid:apps" on-click="showMenu"></iron-icon>

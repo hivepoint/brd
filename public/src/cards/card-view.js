@@ -28,7 +28,7 @@ class CardView extends Polymer.Element {
   onData() {
     this.clearCard();
     if (this.data) {
-      var cardInfo = this.cardMap[this.data.serviceId];
+      var cardInfo = this.cardMap[this.data.serviceId] || this.cardMap["dummy"];
       if (cardInfo) {
         var el = document.createElement(cardInfo.node);
         Polymer.importHref(this.resolveUrl(cardInfo.path), () => {

@@ -7,6 +7,14 @@ class BraidApp extends Polymer.Element {
     }
   }
 
+  constructor() {
+    super();
+    this.pageMap = {
+      feed: 'feed/feed-view.html',
+      search: 'search/search-view.html'
+    };
+  }
+
   connectedCallback() {
     super.connectedCallback();
     window.$service = this.$.service;
@@ -93,14 +101,88 @@ class BraidApp extends Polymer.Element {
         }
       }
 
-      Polymer.importHref(this.resolveUrl('feed/feed-view.html'), () => {
-        this.$.watermark.style.display = hasAccounts ? "none" : "";
-        this.$.feed.refresh(!hasAccounts);
-      });
+      this.$.watermark.style.display = hasAccounts ? "none" : "";
+      this.$.btnSearch.style.display = hasAccounts ? "" : "none";
+      this.hasAccounts = hasAccounts;
+      this._feed();
     }).catch((err) => {
       console.error(err);
     });
   }
+
+  _feed() {
+    this.gotoPage("feed", () => {
+      this.$.feedView.refresh(!this.hasAccounts);
+    });
+  }
+
+  _search(text) {
+    this.gotoPage("search", () => {
+      this.$.searchView.search(text);
+    });
+  }
+
+  gotoPage(hash, callback) {
+    this.$.feedView.style.display = "none";
+    this.$.searchView.style.display = "none";
+    switch (hash) {
+      case "feed":
+        this.$.feedView.style.display = "";
+        break;
+      case "search":
+        this.$.searchView.style.display = "";
+        break;
+      default:
+        break;
+    }
+
+    var url = this.pageMap[hash];
+    if (url) {
+      Polymer.importHref(this.resolveUrl(url), () => {
+        callback();
+      });
+    } else {
+      callback();
+    }
+  }
+
+  onSearch() {
+    if (this.searchMode) {
+      var txt = (this.$.txtSearch.value || "").trim();
+      if (txt) {
+        this._search(txt);
+      } else {
+        this._setSearchMode(false);
+      }
+    } else {
+      this._setSearchMode(true);
+    }
+  }
+
+  _setSearchMode(searchMode) {
+    this.searchMode = searchMode;
+    if (searchMode) {
+      this.$.barBuffer.style.display = "none";
+      this.$.searchTextPanel.style.display = "";
+      this.$.btnSearch.style.background = "white";
+      this.$.searchIcon.style.color = "#000";
+      setTimeout(() => {
+        this.$.txtSearch.focus();
+        this.$.txtSearch.style.padding = "0 0 0 8px";
+        this.$.txtSearch.style.width = "100%";
+      }, 50);
+    } else {
+      this.$.txtSearch.style.padding = "0px";
+      this.$.txtSearch.style.width = "0%";
+      setTimeout(() => {
+        this.$.barBuffer.style.display = "";
+        this.$.searchTextPanel.style.display = "none";
+        this.$.btnSearch.style.background = "";
+        this.$.searchIcon.style.color = "";
+      }, 500);
+    }
+  }
+
 }
 
 window.customElements.define(BraidApp.is, BraidApp);

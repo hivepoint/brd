@@ -1,0 +1,41 @@
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../cards/card-view.html">
+
+<dom-module id="search-view">
+  <template>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
+       :host {
+        display: block;
+        font-size: 11pt;
+        font-weight: 300;
+        font-family: 'Roboto', 'Noto', sans-serif;
+      }
+
+      #container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 10px 15px;
+      }
+
+      @media (max-width: 600px) {
+        #container {
+          padding: 10px 8px;
+        }
+      }
+
+      @media (max-width: 500px) {
+        #container {
+          padding: 10px 0px;
+        }
+      }
+    </style>
+    <div id="container">
+      <template is="dom-repeat" items="{{items}}">
+        <card-view data="{{item}}"></card-view>
+      </template>
+    </div>
+  </template>
+  <script src="search-view.js"></script>
+</dom-module>
