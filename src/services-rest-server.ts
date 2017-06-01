@@ -117,7 +117,7 @@ export class ServicesRestServer implements RestServer {
         for (const service of services) {
           promises.push(this.initiateSearch(context, searchId, service, searchString));
         }
-        await Promise.race(promises); // Wait until at least one has completed
+        await Promise.all(promises);
         return await this.handleServicePollInternal(context, searchId, request, response);
       }
     }
