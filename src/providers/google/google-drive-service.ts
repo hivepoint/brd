@@ -1,7 +1,7 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
-import { googleUsers, GoogleUser } from "../../db";
+import { googleUsers, GoogleUser, googleObjectCache } from "../../db";
 import { utils } from "../../utils/utils";
 import { GoogleService } from "./google-service";
 import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult, FeedResult } from "../../interfaces/service-provider";
@@ -9,6 +9,8 @@ import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
 
 import * as moment from 'moment';
+import { clock } from "../../utils/clock";
+import { logger } from "../../utils/logger";
 
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -174,6 +176,8 @@ export interface DriveFileCardDetails {
   };
 }
 
+const MAX_CACHE_LIFETIME = 1000 * 60 * 60;
+
 export class GoogleDriveService extends GoogleService {
 
   getDescriptor(context: Context): ServiceDescriptor {
@@ -253,58 +257,103 @@ export class GoogleDriveService extends GoogleService {
     if (!googleUser) {
       throw new Error("User missing or invalid");
     }
-    return new Promise<FeedItem[]>((resolve, reject) => {
-      const oauthClient = this.createOauthClient(context, googleUser);
+    const oauthClient = this.createOauthClient(context, googleUser);
+    const args: any = {
+      auth: oauthClient,
+      pageSize: 25,
+      orderBy: 'modifiedTime desc'
+    };
+    args.q = query ? "fullText contains '" + query + "'" : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
+    const listResponse = await this.listFiles(context, args, googleUser);
+    if (listResponse.files.length === 0) {
+      return [];
+    }
+
+    const ids: string[] = [];
+    for (const file of listResponse.files) {
+      ids.push(file.id);
+    }
+    const cacheItems = await googleObjectCache.findItems(context, braidUserId, googleUserId, 'drive-file', ids);
+    const files: DriveFileResource[] = [];
+
+    const drive = google.drive('v3');
+    const batch = new googleBatch();
+    batch.setAuth(oauthClient);
+    let batchCount = 0;
+    for (const file of listResponse.files) {
+      let found = false;
+      for (const cacheItem of cacheItems) {
+        if (cacheItem.objectId === file.id && clock.now() - cacheItem.at < MAX_CACHE_LIFETIME) {
+          files.push(cacheItem.details as DriveFileResource);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        batch.add(drive.files.get({ fileId: file.id, userId: 'me', auth: oauthClient }));
+        batchCount++;
+      }
+    }
+    if (batchCount > 0) {
+      logger.log(context, 'drive', 'handleFetchInternal', 'Fetching batch of ' + batchCount + " files");
+      const batchResults: Array<GoogleBatchResponse<DriveFileResource>> = await this.execBatch(context, batch);
+      for (const batchResult of batchResults) {
+        if (batchResult.body) {
+          files.push(batchResult.body);
+          await googleObjectCache.upsertRecord(context, braidUserId, googleUserId, 'drive-file', batchResult.body.id, batchResult.body);
+        }
+      }
+    }
+    files.sort((a, b) => {
+      const t1 = this.parseFileDate(a.modifiedTime);
+      const t2 = this.parseFileDate(b.modifiedTime);
+      return t2 - t1;
+    });
+    const result: FeedItem[] = [];
+    for (const item of files) {
+      let timestamp: number;
+      if (since > 0) {
+        timestamp = this.parseFileDate(item.modifiedTime);
+        if (timestamp > 0 && timestamp < since) {
+          break;
+        }
+      }
+      if (item.id) {
+        const details = this.getDriveItemDetails(item, googleUser);
+        const match: FeedItem = {
+          timestamp: timestamp,
+          providerId: this.PROVIDER_ID,
+          serviceId: SERVICE_ID,
+          iconUrl: '/s/svcs/google/drive.png',
+          details: details,
+          url: 'https://drive.google.com/open?id=' + item.id
+        };
+        result.push(match);
+      }
+    }
+    return result;
+  }
+
+  private async listFiles(context: Context, args: any, googleUser: GoogleUser): Promise<DriveFilesListResponse> {
+    return new Promise<DriveFilesListResponse>((resolve, reject) => {
       const drive = google.drive('v3');
-      const args: any = {
-        auth: oauthClient,
-        pageSize: 20,
-        orderBy: 'modifiedTime desc'
-      };
-      args.q = query ? "fullText contains '" + query + "'" : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
       drive.files.list(args, (err: any, listResponse: DriveFilesListResponse) => {
         if (err) {
           reject(err);
-        } else if (listResponse.files.length === 0) {
-          resolve([]);
         } else {
-          const batch = new googleBatch();
-          batch.setAuth(oauthClient);
-          for (const file of listResponse.files) {
-            batch.add(drive.files.get({ fileId: file.id, userId: 'me', auth: oauthClient }));
-          }
-          batch.exec((batchError: any, getResponses: Array<GoogleBatchResponse<DriveFileResource>>) => {
-            if (batchError) {
-              reject(batchError);
-            } else {
-              const result: FeedItem[] = [];
-              for (const response of getResponses) {
-                if (response.body) {
-                  const item = response.body;
-                  let timestamp: number;
-                  if (since > 0) {
-                    timestamp = this.parseFileDate(item.modifiedTime);
-                    if (timestamp > 0 && timestamp < since) {
-                      break;
-                    }
-                  }
-                  if (item.id) {
-                    const details = this.getDriveItemDetails(item, googleUser);
-                    const match: FeedItem = {
-                      timestamp: timestamp,
-                      providerId: this.PROVIDER_ID,
-                      serviceId: SERVICE_ID,
-                      iconUrl: '/s/svcs/google/drive.png',
-                      details: details,
-                      url: 'https://drive.google.com/open?id=' + item.id
-                    };
-                    result.push(match);
-                  }
-                }
-              }
-              resolve(result);
-            }
-          });
+          resolve(listResponse);
+        }
+      });
+    });
+  }
+
+  private async execBatch(context: Context, batch: any): Promise<Array<GoogleBatchResponse<DriveFileResource>>> {
+    return new Promise<Array<GoogleBatchResponse<DriveFileResource>>>((resolve, reject) => {
+      batch.exec((batchError: any, getResponses: Array<GoogleBatchResponse<DriveFileResource>>) => {
+        if (batchError) {
+          reject(batchError);
+        } else {
+          resolve(getResponses);
         }
       });
     });
