@@ -32,6 +32,7 @@ class CardView extends Polymer.Element {
       if (cardInfo) {
         var el = document.createElement(cardInfo.node);
         Polymer.importHref(this.resolveUrl(cardInfo.path), () => {
+          el.data = this.data;
           this.$.container.appendChild(el);
         });
       }

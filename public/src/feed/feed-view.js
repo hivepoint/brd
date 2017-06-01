@@ -10,6 +10,13 @@ class FeedView extends Polymer.Element {
   refresh(dummy = false) {
     if (dummy) {
       this.createDummyItems();
+    } else {
+      $service.getFeed().then((response) => {
+        this.set("items", response.items || []);
+        console.log('Feed items: ', this.items);
+      }).catch((err) => {
+        console.error("Error fetching feed: ", err);
+      });
     }
   }
 

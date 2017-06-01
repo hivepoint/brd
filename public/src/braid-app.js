@@ -76,7 +76,6 @@ class BraidApp extends Polymer.Element {
 
   refreshServices() {
     $service.getServices().then((response) => {
-      console.log("services", response);
       this.set("providers", response.providers)
       Polymer.importHref(this.resolveUrl('provider/provider-panel.html'), () => {
         this.$.drawerContentPanel.style.opacity = 1;

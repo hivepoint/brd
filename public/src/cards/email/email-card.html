@@ -5,10 +5,55 @@
        :host {
         display: block;
       }
+
+      a,
+      a:visited {
+        outline: none;
+        color: inherit !important;
+        text-decoration: none;
+      }
+
+      .mailIconCell {
+        padding: 10px;
+      }
+
+      .mailIcon {
+        width: 36px;
+        height: 36px;
+      }
+
+      .addressCell {
+        padding: 8px 10px 5px 0;
+        color: #777;
+      }
+
+      .from {
+        color: #242424;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+      }
+
+      .timestamp {
+        font-size: 9pt;
+        letter-spacing: 0.05em;
+      }
+
+      .subject {
+        color: #242424;
+        padding: 0 15px 10px;
+        font-size: 11pt;
+        font-weight: bold;
+        font-family: 'Open Sans', 'Roboto', 'Noto', sans-serif;
+      }
+
+      .snippet {
+        padding: 0 15px 15px;
+        color: #777;
+      }
     </style>
     <div id="header" class="horizontal layout">
       <div class="mailIconCell">
-        <img class="mailIcon" src$="{{data.iconUrl}}" />
+        <a target="_blank" href$="{{data.url}}"><img class="mailIcon" src$="{{data.iconUrl}}" /></a>
       </div>
       <div class="flex addressCell">
         <div class="horizontal layout">
@@ -21,7 +66,7 @@
       </div>
     </div>
     <div class="subject">{{data.details.subject}}</div>
-    <div class="snippet">{{data.details.snippet}}</div>
+    <div class="snippet"><span>{{data.details.snippet}}</span>...</div>
   </template>
   <script>
     class EmailCard extends Polymer.Element {
