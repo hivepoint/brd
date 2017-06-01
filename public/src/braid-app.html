@@ -205,7 +205,7 @@
             </div>
             <div id="barBuffer" class="flex"></div>
             <div id="searchTextPanel" class="flex" style="display: none;">
-              <input id="txtSearch" type="text" on-input="onSearchInput" />
+              <input id="txtSearch" type="text" on-input="onSearchInput" on-keydown="onSearchKeydown" />
             </div>
             <div id="btnSearch" style="display: none;">
               <iron-icon id="searchIcon" icon="{{sIcon}}" on-click="onSearch"></iron-icon>
