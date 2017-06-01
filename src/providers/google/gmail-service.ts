@@ -148,7 +148,7 @@ export class GmailService extends GoogleService {
     const args: any = {
       auth: oauthClient,
       userId: 'me',
-      maxResults: 200
+      maxResults: 50
     };
     args.q = query ? query : "newer_than:2d";
     const listResponse = await this.listGmailMessages(context, args, googleUser);
