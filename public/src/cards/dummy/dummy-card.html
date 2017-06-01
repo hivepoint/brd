@@ -1,0 +1,44 @@
+<dom-module id="dummy-card">
+  <template>
+    <style is="custom-style">
+       :host {
+        display: block;
+      }
+
+      #container {
+        padding: 20px 15px;
+      }
+
+      .block {
+        height: 90px;
+        width: 90px;
+        float: left;
+        background: rgba(0, 0, 0, 0.04);
+        margin: 0 20px 0 0;
+      }
+
+      .text {
+        font-size: 19px;
+        line-height: 2.6em;
+        color: rgba(0, 0, 0, 0);
+        background: rgba(0, 0, 0, 0.04);
+        display: inline;
+      }
+    </style>
+    <div id="container">
+      <div class="block"></div>
+      <div class="text">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis
+        aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
+        occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      </div>
+    </div>
+  </template>
+  <script>
+    class DummyCard extends Polymer.Element {
+      static get is() { return 'dummy-card'; }
+    }
+    window.customElements.define(DummyCard.is, DummyCard);
+  </script>
+</dom-module>

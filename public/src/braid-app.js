@@ -83,6 +83,11 @@ class BraidApp extends Polymer.Element {
       }, () => {
         this.$.drawerContentPanel.style.opacity = 1;
       });
+
+      Polymer.importHref(this.resolveUrl('feed/feed-view.html'), () => {
+        this.$.watermark.style.display = "";
+        this.$.feed.refresh(true);
+      });
     }).catch((err) => {
       console.error(err);
     });
