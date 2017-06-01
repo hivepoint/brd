@@ -131,6 +131,17 @@ class BraidApp extends Polymer.Element {
     this.set('sIcon', 'braid:search');
   }
 
+  onSearchKeydown(event) {
+    if (event.keyCode === 13) {
+      setTimeout(() => {
+        var txt = (this.$.txtSearch.value || "").trim();
+        if (txt) {
+          this._search(txt);
+        }
+      }, 10);
+    }
+  }
+
   gotoPage(hash, callback) {
     this.activePage = hash;
     this.$.feedView.style.display = "none";
