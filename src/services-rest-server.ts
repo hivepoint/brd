@@ -43,8 +43,8 @@ export class ServicesRestServer implements RestServer {
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleServices.bind(this), 'get', '/services', true, false);
-    registrar.registerHandler(context, this.handleSearch.bind(this), 'poll', '/search', true, false);
-    registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'poll', '/search/poll', true, false);
+    registrar.registerHandler(context, this.handleSearch.bind(this), 'post', '/search', true, false);
+    registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'post', '/search/poll', true, false);
   }
 
   async handleServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
