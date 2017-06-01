@@ -3,8 +3,20 @@ class BraidApp extends Polymer.Element {
 
   static get properties() {
     return {
-      providers: Array
+      providers: Array,
+      sIcon: {
+        type: String,
+        value: 'braid:search'
+      }
     }
+  }
+
+  constructor() {
+    super();
+    this.pageMap = {
+      feed: 'feed/feed-view.html',
+      search: 'search/search-view.html'
+    };
   }
 
   connectedCallback() {
@@ -76,7 +88,6 @@ class BraidApp extends Polymer.Element {
 
   refreshServices() {
     $service.getServices().then((response) => {
-      console.log("services", response);
       this.set("providers", response.providers)
       Polymer.importHref(this.resolveUrl('provider/provider-panel.html'), () => {
         this.$.drawerContentPanel.style.opacity = 1;
@@ -84,14 +95,116 @@ class BraidApp extends Polymer.Element {
         this.$.drawerContentPanel.style.opacity = 1;
       });
 
-      Polymer.importHref(this.resolveUrl('feed/feed-view.html'), () => {
-        this.$.watermark.style.display = "";
-        this.$.feed.refresh(true);
-      });
+      var hasAccounts = false;
+      if (response.providers && response.providers.length) {
+        for (var i = 0; i < response.providers.length; i++) {
+          if (response.providers[i].accounts && response.providers[i].accounts.length) {
+            hasAccounts = true;
+            break;
+          }
+        }
+      }
+
+      this.$.watermark.style.display = hasAccounts ? "none" : "";
+      this.$.btnSearch.style.display = hasAccounts ? "" : "none";
+      this.hasAccounts = hasAccounts;
+      this._feed();
     }).catch((err) => {
       console.error(err);
     });
   }
+
+  _feed() {
+    this.gotoPage("feed", () => {
+      this.$.feedView.refresh(!this.hasAccounts);
+    });
+  }
+
+  _search(text) {
+    this.set('sIcon', 'braid:clear');
+    this.gotoPage("search", () => {
+      this.$.searchView.search(text);
+    });
+  }
+
+  onSearchInput() {
+    this.set('sIcon', 'braid:search');
+  }
+
+  gotoPage(hash, callback) {
+    this.activePage = hash;
+    this.$.feedView.style.display = "none";
+    this.$.searchView.style.display = "none";
+    switch (hash) {
+      case "feed":
+        this.$.feedView.style.display = "";
+        break;
+      case "search":
+        this.$.searchView.style.display = "";
+        break;
+      default:
+        break;
+    }
+
+    var url = this.pageMap[hash];
+    if (url) {
+      Polymer.importHref(this.resolveUrl(url), () => {
+        callback();
+      });
+    } else {
+      callback();
+    }
+  }
+
+  onSearch() {
+    if (this.searchMode) {
+      var clear = this.sIcon == "braid:clear";
+      if (!clear) {
+        var txt = (this.$.txtSearch.value || "").trim();
+        if (txt) {
+          this._search(txt);
+        } else {
+          clear = true;
+        }
+      }
+
+      if (clear) {
+        this.set('sIcon', "braid:search");
+        this.$.txtSearch.value = "";
+        this._setSearchMode(false);
+        if (this.activePage === "search") {
+          this._feed();
+        }
+      }
+    } else {
+      this._setSearchMode(true);
+    }
+  }
+
+  _setSearchMode(searchMode) {
+    this.searchMode = searchMode;
+    if (searchMode) {
+      this.$.barBuffer.style.display = "none";
+      this.$.searchTextPanel.style.display = "";
+      this.$.btnSearch.style.background = "white";
+      this.$.searchIcon.style.color = "#000";
+      setTimeout(() => {
+        this.$.txtSearch.focus();
+        this.$.txtSearch.style.padding = "0 0 0 8px";
+        this.$.txtSearch.style.width = "100%";
+      }, 50);
+    } else {
+      this.$.txtSearch.style.padding = "0px";
+      this.$.txtSearch.style.width = "0%";
+      setTimeout(() => {
+        this.$.barBuffer.style.display = "";
+        this.$.searchTextPanel.style.display = "none";
+        this.$.btnSearch.style.background = "";
+        this.$.searchIcon.style.color = "";
+      }, 500);
+    }
+  }
+
 }
 
 window.customElements.define(BraidApp.is, BraidApp);

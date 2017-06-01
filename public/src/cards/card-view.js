@@ -13,7 +13,8 @@ class CardView extends Polymer.Element {
   constructor() {
     super();
     this.cardMap = {
-      "dummy": { node: "dummy-card", path: "dummy/dummy-card.html" }
+      "dummy": { node: "dummy-card", path: "dummy/dummy-card.html" },
+      "com.hivepoint.google.gmail": { node: "email-card", path: "email/email-card.html" }
     };
   }
 
@@ -27,10 +28,11 @@ class CardView extends Polymer.Element {
   onData() {
     this.clearCard();
     if (this.data) {
-      var cardInfo = this.cardMap[this.data.cardType];
+      var cardInfo = this.cardMap[this.data.serviceId] || this.cardMap["dummy"];
       if (cardInfo) {
         var el = document.createElement(cardInfo.node);
         Polymer.importHref(this.resolveUrl(cardInfo.path), () => {
+          el.data = this.data;
           this.$.container.appendChild(el);
         });
       }
