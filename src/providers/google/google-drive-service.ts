@@ -260,7 +260,7 @@ export class GoogleDriveService extends GoogleService {
     const oauthClient = this.createOauthClient(context, googleUser);
     const args: any = {
       auth: oauthClient,
-      pageSize: 20,
+      pageSize: 25,
       orderBy: 'modifiedTime desc'
     };
     args.q = query ? "fullText contains '" + query + "'" : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
