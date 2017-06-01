@@ -1,32 +1,226 @@
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/elements/dom-repeat.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="braid-icons.html">
 
 <dom-module id="braid-app">
   <template>
-    <style>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
        :host {
         display: block;
       }
-    </style>
-    <h2>Hello [[prop1]]!</h2>
-  </template>
 
-  <script>
-    /**
-     * @customElement
-     * @polymer
-     */
-    class BraidApp extends Polymer.Element {
-      static get is() { return 'braid-app'; }
-      static get properties() {
-        return {
-          prop1: {
-            type: String,
-            value: 'braid-app'
-          }
-        };
+      .fillContainer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
       }
-    }
 
-    window.customElements.define(BraidApp.is, BraidApp);
-  </script>
+      .verticalScroll {
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #shell {
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+      }
+
+      #scrollPanel {
+        background: #fafafa;
+      }
+
+      #rightDrawer {
+        width: 280px;
+        background: #fafafa;
+        transition: right 0.5s ease;
+        position: relative;
+        border-left: 1px solid #e5e5e5;
+      }
+
+      #topBuffer {
+        height: 80px;
+      }
+
+      #toolbar {
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-image: url('/s/images/mist.jpg');
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        overflow: hidden;
+        transition: box-shadow 0.2s ease;
+      }
+
+      #toolbarMain {
+        min-height: 80px;
+        padding: 0 16px;
+      }
+
+      #toolbarSub {
+        padding: 0 16px;
+        overflow: hidden;
+      }
+
+      #toolbarSubContent {
+        padding: 8px 0 18px;
+        color: white;
+        font-size: 18px;
+        letter-spacing: 0.01em;
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+      }
+
+      #barLogo {
+        display: block;
+        opacity: 0.8;
+      }
+
+      a,
+      a:visited {
+        outline: none;
+        color: inherit !important;
+        text-decoration: none;
+      }
+
+      .follow {
+        background: rgba(81, 132, 233, 0.6);
+        border: 1px solid rgba(81, 132, 233, 1);
+        display: inline-block;
+        white-space: nowrap;
+        padding: 0 5px;
+        margin: 0 2px 0 0;
+        border-radius: 3px;
+        text-shadow: none;
+        transition: all 0.2s ease;
+      }
+
+      .follow:hover {
+        background: rgba(81, 132, 233, 1);
+        box-shadow: 0 3px 3px -1px rgba(0, 0, 0, 0.4);
+      }
+
+      iron-icon {
+        cursor: pointer;
+        color: white;
+        --iron-icon-height: 32px;
+        --iron-icon-width: 32px;
+        padding: 7px;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+      }
+
+      iron-icon:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      #btnApps {
+        display: none;
+      }
+
+      #glass {
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      #drawerContentPanel {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .panelHeader {
+        text-align: center;
+        padding: 20px 10px 30px;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+        color: #666;
+      }
+
+      #watermark {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 20px;
+        text-align: center;
+        background: rgba(250, 250, 250, 0.9);
+        color: #000;
+        font-weight: bold;
+        font-size: 14pt;
+        box-shadow: -2px -3px 5px -1px rgba(0, 0, 0, 0.3);
+      }
+
+      @media (max-width: 1000px) {
+        #btnApps {
+          display: initial;
+        }
+        #rightDrawer {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          right: -350px;
+          box-shadow: -2px 0 10px -1px rgba(0, 0, 0, 0.6);
+          border-left: none;
+        }
+      }
+    </style>
+    <div id="shell" class="horizontal layout">
+      <div class="flex" style="position: relative;">
+        <div id="scrollPanel" class="fillContainer verticalScroll" on-scroll="onScroll">
+          <div id="topBuffer"></div>
+          <div id="contentPanel" style="font-size: 20px;">
+            <feed-view id="feed"></feed-view>
+          </div>
+        </div>
+        <div id="toolbar">
+          <div id="toolbarMain" class="horizontal layout center">
+            <div>
+              <img id="barLogo" src="/s/images/logos/logo_white_40.png">
+            </div>
+            <div class="flex"></div>
+            <div>
+              <iron-icon icon="braid:search"></iron-icon>
+            </div>
+            <div id="btnApps">
+              <iron-icon icon="braid:apps" on-click="showMenu"></iron-icon>
+            </div>
+          </div>
+          <div id="toolbarSub">
+            <div id="toolbarSubContent">
+              <div>Stay caught up with your private internet</div>
+              <div>
+                Braid is still under development but you can try it now.
+                <a class="follow" href="https://twitter.com/braidapp" target="_blank">Follow us on Twitter</a> to stay connected.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="watermark" style="display: none;">
+          Link to at least one of your cloud services to see itms in this feed.
+        </div>
+        <div id="glass" class="fillContainer" on-click="closeMenu" style="display: none;"></div>
+      </div>
+
+      <div id="rightDrawer">
+        <div class="fillContainer verticalScroll">
+          <div id="drawerContentPanel">
+            <div class="panelHeader">Link your cloud services</div>
+            <template is="dom-repeat" items="{{providers}}">
+              <provider-panel data="{{item}}"></provider-panel>
+            </template>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <braid-service id="service"></braid-service>
+  </template>
+  <script src="braid-app.js"></script>
+  <script src="common/braid-service.js"></script>
 </dom-module>
