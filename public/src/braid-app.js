@@ -3,7 +3,11 @@ class BraidApp extends Polymer.Element {
 
   static get properties() {
     return {
-      providers: Array
+      providers: Array,
+      sIcon: {
+        type: String,
+        value: 'braid:search'
+      }
     }
   }
 
@@ -117,12 +121,18 @@ class BraidApp extends Polymer.Element {
   }
 
   _search(text) {
+    this.set('sIcon', 'braid:clear');
     this.gotoPage("search", () => {
       this.$.searchView.search(text);
     });
   }
 
+  onSearchInput() {
+    this.set('sIcon', 'braid:search');
+  }
+
   gotoPage(hash, callback) {
+    this.activePage = hash;
     this.$.feedView.style.display = "none";
     this.$.searchView.style.display = "none";
     switch (hash) {
@@ -148,11 +158,23 @@ class BraidApp extends Polymer.Element {
 
   onSearch() {
     if (this.searchMode) {
-      var txt = (this.$.txtSearch.value || "").trim();
-      if (txt) {
-        this._search(txt);
-      } else {
+      var clear = this.sIcon == "braid:clear";
+      if (!clear) {
+        var txt = (this.$.txtSearch.value || "").trim();
+        if (txt) {
+          this._search(txt);
+        } else {
+          clear = true;
+        }
+      }
+
+      if (clear) {
+        this.set('sIcon', "braid:search");
+        this.$.txtSearch.value = "";
         this._setSearchMode(false);
+        if (this.activePage === "search") {
+          this._feed();
+        }
       }
     } else {
       this._setSearchMode(true);

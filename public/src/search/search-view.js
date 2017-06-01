@@ -12,7 +12,6 @@ class SearchView extends Polymer.Element {
   }
 
   search(query) {
-    console.log("Search view - ", query);
     $service.search(query).then((response) => {
       this.set("data", response);
     }).catch((err) => {
