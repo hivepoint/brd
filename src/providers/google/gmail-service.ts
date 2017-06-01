@@ -1,13 +1,14 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
-import { googleUsers, GoogleUser } from "../../db";
+import { googleUsers, GoogleUser, googleObjectCache } from "../../db";
 import { utils } from "../../utils/utils";
 import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult, FeedResult } from "../../interfaces/service-provider";
 import { GoogleService } from "./google-service";
 import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
 import { logger } from "../../utils/logger";
+import { clock } from "../../utils/clock";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -73,6 +74,8 @@ interface GmailListResponse {
   nextPageToken: string;
   resultSizeEstimate: number;
 }
+
+const MAX_CACHE_LIFETIME = 1000 * 60 * 5;
 
 export class GmailService extends GoogleService {
 
@@ -141,62 +144,98 @@ export class GmailService extends GoogleService {
     if (!googleUser) {
       throw new Error("User is missing or invalid");
     }
-    return new Promise<FeedItem[]>((resolve, reject) => {
-      const oauthClient = this.createOauthClient(context, googleUser);
-      const gmail = google.gmail('v1');
-      const args: any = {
-        auth: oauthClient,
-        userId: 'me',
-        maxResults: 50
+    const oauthClient = this.createOauthClient(context, googleUser);
+    const args: any = {
+      auth: oauthClient,
+      userId: 'me',
+      maxResults: 200
+    };
+    args.q = query ? query : "newer_than:2d";
+    const listResponse = await this.listGmailMessages(context, args, googleUser);
+    if (listResponse.messages.length === 0) {
+      return [];
+    }
+    const ids: string[] = [];
+    for (const message of listResponse.messages) {
+      ids.push(message.id);
+    }
+    const cacheItems = await googleObjectCache.findItems(context, braidUserId, googleUserId, 'gmail-message', ids);
+    const messages: GmailMessageResource[] = [];
+    const gmail = google.gmail('v1');
+    const batch = new googleBatch();
+    batch.setAuth(oauthClient);
+    let batchCount = 0;
+    for (const message of listResponse.messages) {
+      let found = false;
+      for (const cacheItem of cacheItems) {
+        if (cacheItem.objectId === message.id && clock.now() - cacheItem.at < MAX_CACHE_LIFETIME) {
+          messages.push(cacheItem.details as GmailMessageResource);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        batch.add(gmail.users.messages.get({ id: message.id, userId: 'me', auth: oauthClient }));
+        batchCount++;
+      }
+    }
+    if (batchCount > 0) {
+      logger.log(context, 'gmail', 'handleFetchInternal', 'Fetching batch of ' + batchCount + " messages");
+      const batchResults: Array<GoogleBatchResponse<GmailMessageResource>> = await this.execBatch(context, batch);
+      for (const batchResult of batchResults) {
+        if (batchResult.body) {
+          messages.push(batchResult.body);
+          await googleObjectCache.upsertRecord(context, braidUserId, googleUserId, 'gmail-message', batchResult.body.id, batchResult.body);
+        }
+      }
+    }
+    messages.sort((a, b) => {
+      const t1 = this.getEmailDate(a);
+      const t2 = this.getEmailDate(b);
+      return t2 - t1;
+    });
+    const items: FeedItem[] = [];
+    for (const message of messages) {
+      const timestamp = this.getEmailDate(message);
+      if (timestamp) {
+        if (since && timestamp < since) {
+          break;
+        }
+      }
+      const details = this.getEmailDetails(message, googleUser);
+      const match: FeedItem = {
+        timestamp: this.getEmailDate(message),
+        providerId: this.PROVIDER_ID,
+        serviceId: SERVICE_ID,
+        iconUrl: '/s/svcs/google/msg.png',
+        details: details,
+        url: this.getEmailUrl(message, googleUser)
       };
-      args.q = query ? query : "newer_than:2d";
+      items.push(match);
+    }
+    return items;
+  }
+
+  private async listGmailMessages(context: Context, args: any, googleUser: GoogleUser): Promise<GmailListResponse> {
+    return new Promise<GmailListResponse>((resolve, reject) => {
+      const gmail = google.gmail('v1');
       gmail.users.messages.list(args, (err: any, listResponse: GmailListResponse) => {
         if (err) {
           reject(err);
         } else {
-          if (listResponse.messages.length === 0) {
-            resolve([]);
-            return;
-          }
-          const batch = new googleBatch();
-          batch.setAuth(oauthClient);
-          for (const message of listResponse.messages) {
-            batch.add(gmail.users.messages.get({ id: message.id, userId: 'me', auth: oauthClient }));
-          }
-          logger.log(context, 'gmail', 'handleFetchInternal', 'Fetching batch of ' + listResponse.messages.length + " messages");
-          batch.exec((batchError: any, getResponses: Array<GoogleBatchResponse<GmailMessageResource>>) => {
-            if (batchError) {
-              reject(batchError);
-            } else {
-              const items: FeedItem[] = [];
-              getResponses.sort((a, b) => {
-                const t1 = this.getEmailDate(a.body);
-                const t2 = this.getEmailDate(b.body);
-                return t2 - t1;
-              });
-              for (const response of getResponses) {
-                if (response.body) {
-                  const timestamp = this.getEmailDate(response.body);
-                  if (timestamp) {
-                    if (since && timestamp < since) {
-                      break;
-                    }
-                  }
-                  const details = this.getEmailDetails(response.body, googleUser);
-                  const match: FeedItem = {
-                    timestamp: this.getEmailDate(response.body),
-                    providerId: this.PROVIDER_ID,
-                    serviceId: SERVICE_ID,
-                    iconUrl: '/s/svcs/google/msg.png',
-                    details: details,
-                    url: this.getEmailUrl(response.body, googleUser)
-                  };
-                  items.push(match);
-                }
-              }
-              resolve(items);
-            }
-          });
+          resolve(listResponse);
+        }
+      });
+    });
+  }
+
+  private async execBatch(context: Context, batch: any): Promise<Array<GoogleBatchResponse<GmailMessageResource>>> {
+    return new Promise<Array<GoogleBatchResponse<GmailMessageResource>>>((resolve, reject) => {
+      batch.exec((batchError: any, getResponses: Array<GoogleBatchResponse<GmailMessageResource>>) => {
+        if (batchError) {
+          reject(batchError);
+        } else {
+          resolve(getResponses);
         }
       });
     });
