@@ -26,11 +26,17 @@ export class UserCollection extends MongoCollection {
       id: id
     });
   }
+
+  async updateCaughtUp(context: Context, user: User, lastCaughtUp: number): Promise<void> {
+    await this.users.update({ id: context.user.id }, { $set: { lastCaughtUp: lastCaughtUp } });
+    user.lastCaughtUp = lastCaughtUp;
+  }
 }
 
 export interface User {
   id: string;
   created: number;
+  lastCaughtUp?: number;
 }
 
 const users = new UserCollection();

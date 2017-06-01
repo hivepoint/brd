@@ -3,9 +3,11 @@ import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
 import { utils } from "../../utils/utils";
-import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult } from "../../interfaces/service-provider";
+import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult, FeedResult } from "../../interfaces/service-provider";
 import { GoogleService } from "./google-service";
 import { urlManager } from "../../url-manager";
+import { GoogleBatchResponse } from "./google-service";
+import { logger } from "../../utils/logger";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -16,7 +18,7 @@ interface EmailAddress {
   address: string;
 }
 
-interface GmailMatchDetails {
+interface GmailMessageDetails {
   emailAddress: string;
   type: string;
   id: string;
@@ -33,6 +35,45 @@ interface GmailMatchDetails {
 
 const SERVICE_URL = '/svc/google/gmail';
 const SERVICE_ID = 'com.hivepoint.google.gmail';
+
+interface GmailAttachmentResource {
+  attachmentId: string;
+  size: number;
+  data: string;  // Base64URL encoded
+}
+
+interface GmailMessageHeader {
+  name: string;
+  value: string;
+}
+
+// https://developers.google.com/gmail/api/v1/reference/users/messages#resource
+interface GmailMessageResource {
+  id: string;
+  threadId: string;
+  labelIds: string[];
+  snippet: string;
+  historyId: number;
+  internalDate: number;
+  payload: {
+    partId: string;
+    mimeType: string;
+    filename: string;
+    headers: GmailMessageHeader[];
+    body: GmailAttachmentResource;
+    parts: any[];  // child MIME message parts
+  };
+  sizeEstimate: number;
+  raw: string;  // base64url encoded
+}
+
+// https://developers.google.com/gmail/api/v1/reference/users/messages/list
+interface GmailListResponse {
+  messages: GmailMessageResource[];
+  nextPageToken: string;
+  resultSizeEstimate: number;
+}
+
 export class GmailService extends GoogleService {
 
   getDescriptor(context: Context): ServiceDescriptor {
@@ -63,48 +104,97 @@ export class GmailService extends GoogleService {
     if (!query) {
       return new RestServiceResult(null, 400, "Search query q is missing");
     }
+    try {
+      const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query);
+      const result: SearchResult = {
+        matches: feedItems
+      };
+      return new RestServiceResult(result);
+    } catch (err) {
+      return new RestServiceResult(null, 503, err.toString());
+    }
+  }
+
+  async handleFeed(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    const braidUserId = request.query.braidUserId;
+    const googleUserId = request.query.accountId;
+    if (!braidUserId || !googleUserId) {
+      return new RestServiceResult(null, 400, "token and/or id parameter is missing");
+    }
+    const since = request.query.since;
+    if (!since) {
+      return new RestServiceResult(null, 400, "search param is missing");
+    }
+    try {
+      const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, null, since);
+      const result: FeedResult = {
+        items: feedItems
+      };
+      return new RestServiceResult(result);
+    } catch (err) {
+      return new RestServiceResult(null, 503, err.toString());
+    }
+  }
+
+  private async handleFetchInternal(context: Context, braidUserId: string, googleUserId: string, query: string, since = 0): Promise<FeedItem[]> {
     const googleUser = await googleUsers.findByUserAndGoogleId(context, braidUserId, googleUserId);
     if (!googleUser) {
-      return new RestServiceResult(null, 401, "User is missing or invalid");
+      throw new Error("User is missing or invalid");
     }
-    return new Promise<RestServiceResult>((resolve, reject) => {
+    return new Promise<FeedItem[]>((resolve, reject) => {
       const oauthClient = this.createOauthClient(context, googleUser);
       const gmail = google.gmail('v1');
-      gmail.users.messages.list({
+      const args: any = {
         auth: oauthClient,
         userId: 'me',
-        q: query,
-        maxResults: 25
-      }, (err: any, listResponse: any) => {
+        maxResults: 50
+      };
+      args.q = query ? query : "newer_than:2d";
+      gmail.users.messages.list(args, (err: any, listResponse: GmailListResponse) => {
         if (err) {
           reject(err);
         } else {
+          if (listResponse.messages.length === 0) {
+            resolve([]);
+            return;
+          }
           const batch = new googleBatch();
           batch.setAuth(oauthClient);
           for (const message of listResponse.messages) {
             batch.add(gmail.users.messages.get({ id: message.id, userId: 'me', auth: oauthClient }));
           }
-          batch.exec((batchError: any, getResponses: any[]) => {
+          logger.log(context, 'gmail', 'handleFetchInternal', 'Fetching batch of ' + listResponse.messages.length + " messages");
+          batch.exec((batchError: any, getResponses: Array<GoogleBatchResponse<GmailMessageResource>>) => {
             if (batchError) {
               reject(batchError);
             } else {
-              const searchResult: SearchResult = {
-                matches: []
-              };
-              for (const item of getResponses) {
-                if (item.body && item.body.id) {
-                  const details = this.getEmailDetails(item, googleUser);
+              const items: FeedItem[] = [];
+              getResponses.sort((a, b) => {
+                const t1 = this.getEmailDate(a.body);
+                const t2 = this.getEmailDate(b.body);
+                return t2 - t1;
+              });
+              for (const response of getResponses) {
+                if (response.body) {
+                  const timestamp = this.getEmailDate(response.body);
+                  if (timestamp) {
+                    if (since && timestamp < since) {
+                      break;
+                    }
+                  }
+                  const details = this.getEmailDetails(response.body, googleUser);
                   const match: FeedItem = {
+                    timestamp: this.getEmailDate(response.body),
                     providerId: this.PROVIDER_ID,
                     serviceId: SERVICE_ID,
                     iconUrl: '/s/svcs/google/msg.png',
                     details: details,
-                    url: this.getEmailUrl(item, googleUser)
+                    url: this.getEmailUrl(response.body, googleUser)
                   };
-                  searchResult.matches.push(match);
+                  items.push(match);
                 }
               }
-              resolve(new RestServiceResult(searchResult));
+              resolve(items);
             }
           });
         }
@@ -112,9 +202,9 @@ export class GmailService extends GoogleService {
     });
   }
 
-  private getEmailSubject(item: any): string {
-    if (item && item.body && item.body.payload && item.body.payload.headers) {
-      for (const header of item.body.payload.headers) {
+  private getEmailSubject(item: GmailMessageResource): string {
+    if (item.payload && item.payload.headers) {
+      for (const header of item.payload.headers) {
         if (header.name && header.name.toLowerCase() === 'subject') {
           return header.value;
         }
@@ -123,16 +213,16 @@ export class GmailService extends GoogleService {
     return null;
   }
 
-  private getEmailDetails(item: any, googleUser: GoogleUser): GmailMatchDetails {
+  private getEmailDetails(item: GmailMessageResource, googleUser: GoogleUser): GmailMessageDetails {
     const fromAddresses = this.getEmailAddressesFromHeader(item, 'From');
-    const result: GmailMatchDetails = {
+    const result: GmailMessageDetails = {
       emailAddress: googleUser.emailAddress,
       type: 'email-message',
-      id: item.body ? item.body.id : null,
-      thread: item.body && item.body.payload ? item.body.payload.theadId : null,
-      labels: item.body.labelIds,
-      size: item.body ? item.body.sizeEstimate : null,
-      snippet: item.body ? item.body.snippet : null,
+      id: item.id,
+      thread: item.threadId,
+      labels: item.labelIds,
+      size: item.sizeEstimate,
+      snippet: item.snippet,
       date: this.getEmailDate(item),
       subject: this.getEmailSubject(item),
       from: fromAddresses.length > 0 ? fromAddresses[0] : null,
@@ -142,7 +232,7 @@ export class GmailService extends GoogleService {
     return result;
   }
 
-  private getEmailAddressesFromHeader(item: any, header: string): EmailAddress[] {
+  private getEmailAddressesFromHeader(item: GmailMessageResource, header: string): EmailAddress[] {
     const result: EmailAddress[] = [];
     const value = this.getEmailHeader(item, header);
     if (!value) {
@@ -159,9 +249,9 @@ export class GmailService extends GoogleService {
     return result;
   }
 
-  private getEmailHeader(item: any, headerName: string): string {
-    if (item && item.body && item.body.payload && item.body.payload.headers) {
-      for (const header of item.body.payload.headers) {
+  private getEmailHeader(item: GmailMessageResource, headerName: string): string {
+    if (item.payload && item.payload.headers) {
+      for (const header of item.payload.headers) {
         if (header.name && header.name.toLowerCase() === headerName.toLowerCase()) {
           return header.value;
         }
@@ -170,16 +260,16 @@ export class GmailService extends GoogleService {
     return null;
   }
 
-  private getEmailUrl(item: any, googleUser: GoogleUser): string {
-    if (item && item.body && item.body.threadId) {
-      return 'https://mail.google.com/mail/?authuser=' + googleUser.emailAddress + '#all/' + item.body.threadId;
+  private getEmailUrl(item: GmailMessageResource, googleUser: GoogleUser): string {
+    if (item.threadId) {
+      return 'https://mail.google.com/mail/?authuser=' + googleUser.emailAddress + '#all/' + item.threadId;
     }
     return null;
   }
 
-  private getEmailDate(item: any): number {
-    if (item && item.body && item.body.payload && item.body.payload.headers) {
-      for (const header of item.body.payload.headers) {
+  private getEmailDate(item: GmailMessageResource): number {
+    if (item.payload && item.payload.headers) {
+      for (const header of item.payload.headers) {
         if (header.name && header.name.toLowerCase() === 'date') {
           const dateString = header.value;
           const result = dateParser(dateString);
@@ -191,11 +281,6 @@ export class GmailService extends GoogleService {
     }
     return null;
   }
-
-  async handleFeed(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    return null;
-  }
-
 }
 
 const gmailService = new GmailService();

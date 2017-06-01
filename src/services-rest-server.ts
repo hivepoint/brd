@@ -6,7 +6,7 @@ import { userManager } from "./user-manager";
 import { clock } from "./utils/clock";
 import { logger } from "./utils/logger";
 import { utils } from "./utils/utils";
-import { ProviderAccountProfile, ServiceProviderDescriptor, ServiceDescriptor, SearchResult } from "./interfaces/service-provider";
+import { ProviderAccountProfile, ServiceProviderDescriptor, ServiceDescriptor, SearchResult, FeedItem, FeedResult } from "./interfaces/service-provider";
 import { v4 as uuid } from 'node-uuid';
 import { servicesManager } from "./services-manager";
 import { RestClient } from "./utils/rest-client";
@@ -39,12 +39,24 @@ export interface SearchRestResponse {
   serviceResults: SearchRestResult[];
 }
 
+export interface FeedRestResponse {
+  items: FeedItem[];
+}
+
+interface FeedFetchResult {
+  service: Service;
+  result?: FeedResult;
+  errorMessage?: string;
+}
+
 export class ServicesRestServer implements RestServer {
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleServices.bind(this), 'get', '/services', true, false);
-    registrar.registerHandler(context, this.handleSearch.bind(this), 'poll', '/search', true, false);
-    registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'poll', '/search/poll', true, false);
+    registrar.registerHandler(context, this.handleSearch.bind(this), 'post', '/search', true, false);
+    registrar.registerHandler(context, this.handleSearchPoll.bind(this), 'post', '/search/poll', true, false);
+    registrar.registerHandler(context, this.handleFeed.bind(this), 'get', '/feed', true, false);
+    registrar.registerHandler(context, this.handleCaughtUp.bind(this), 'get', '/caughtUp', true, false);
   }
 
   async handleServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -158,6 +170,75 @@ export class ServicesRestServer implements RestServer {
       await providerAccounts.updateState(context, context.user.id, service.provider.id, service.account.accountId, 'error', err.toString(), clock.now());
       await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, false, err.toString());
     }
+  }
+
+  async handleFeed(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    const result: FeedRestResponse = { items: [] };
+    if (context.user) {
+      let since = context.user.lastCaughtUp;
+      if (!since) {
+        since = clock.now() - 1000 * 60 * 60 * 24;
+      }
+      logger.log(context, 'services-rest', 'handleFeed', 'Fetching feed', since);
+      const services: Service[] = [];
+      const accts = await providerAccounts.findByUser(context, context.user.id);
+      for (const acct of accts) {
+        for (const provider of servicesManager.getProviderDescriptors(context, false)) {
+          if (acct.providerId === provider.id) {
+            for (const serviceDescriptor of provider.services) {
+              if (acct.profile.serviceIds && acct.profile.serviceIds.indexOf(serviceDescriptor.id) >= 0) {
+                services.push({
+                  account: acct,
+                  provider: provider,
+                  descriptor: serviceDescriptor
+                });
+              }
+            }
+          }
+        }
+      }
+      if (services.length > 0) {
+        const promises: Array<Promise<FeedFetchResult>> = [];
+        for (const service of services) {
+          promises.push(this.fetchFeedFromService(context, service, since));
+        }
+        const fetchResults = await Promise.all(promises);
+        for (const fetchResult of fetchResults) {
+          if (fetchResult.result) {
+            for (const item of fetchResult.result.items) {
+              result.items.push(item);
+            }
+          }
+        }
+        result.items.sort((a, b) => {
+          return b.timestamp - a.timestamp;
+        });
+      }
+    }
+    return new RestServiceResult(result);
+  }
+
+  private async fetchFeedFromService(context: Context, service: Service, since: number): Promise<FeedFetchResult> {
+    try {
+      const feedResult = await RestClient.get<FeedResult>(service.descriptor.serviceUrl + '/feed', { braidUserId: context.user.id, accountId: service.account.accountId, since: since });
+      return {
+        service: service,
+        result: feedResult,
+      };
+    } catch (err) {
+      logger.error(context, 'services', 'loadProvider', 'Failure fetching feed from service ' + service.descriptor.name, utils.logErrorObject(err));
+      return {
+        service: service,
+        errorMessage: err.toString()
+      };
+    }
+  }
+
+  async handleCaughtUp(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    if (context.user) {
+      await userManager.updateCaughtUp(context);
+    }
+    return new RestServiceResult({});
   }
 }
 
