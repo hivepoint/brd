@@ -98,6 +98,7 @@ export class GoogleProvider implements RestServer, Startable {
     const oauthClient = this.createOauthClient(context);
     const url = oauthClient.generateAuthUrl({
       access_type: 'offline',
+      approval_prompt: 'force',
       scope: scopes,
       state: JSON.stringify({ braidUserId: braidUserId, services: scopedServiceIds, clientCallback: callbackUrl })
     });
