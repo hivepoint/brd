@@ -17,6 +17,10 @@ const DRIVE_SERVICE_ID = 'drive';
 const CLIENT_ID = '465784242367-35slo3s2c649sos2r92t9kkhkqidm8vi.apps.googleusercontent.com';
 const CLIENT_SECRET = 'HcxU0DLd_Uq0fegkYq92lrme';
 
+export interface GoogleBatchResponse<T> {
+  body: T;
+}
+
 export abstract class GoogleService implements RestServer {
   protected PROVIDER_ID = 'com.hivepoint.search.google';
 

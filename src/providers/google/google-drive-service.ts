@@ -6,8 +6,13 @@ import { utils } from "../../utils/utils";
 import { GoogleService } from "./google-service";
 import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult, FeedResult } from "../../interfaces/service-provider";
 import { urlManager } from "../../url-manager";
+import { GoogleBatchResponse } from "./google-service";
+
+import * as moment from 'moment';
+
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
+
 const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
@@ -40,35 +45,6 @@ interface DriveFileResource {
   version: number;
   webContentLink: string;
   webViewLink: string;
-}
-
-// https://developers.google.com/drive/v3/reference/files/list
-interface DriveFilesListResponse {
-  kind: string;
-  nextPageToken: string;
-  incompleteSearch: boolean;
-  files: DriveFileResource[];
-}
-
-export interface DriveFileCardDetails {
-  id: string;
-  name: string;
-  mimeType: string;
-  description: string;
-  starred: boolean;
-  trashed: boolean;
-  trashingUser: {
-    kind: string;
-    displayName: string;
-    photoLink: string;
-    me: boolean;
-    permissionId: string;
-    emailAddress: string;
-  };
-  trashedTime: string;
-  version: number;
-  webContentLink: string;
-  webViewLink: string;
   iconLink: string;
   hasThumbnail: boolean;
   thumbnailLink: string;
@@ -79,7 +55,125 @@ export interface DriveFileCardDetails {
   modifiedTime: string;
   modifiedByMe: boolean;
   modifiedByMeTime: string;
+  sharedWithMeTime: string;
+  sharingUser: DriveUserProfile;
+  owners: DriveUserProfile[];
+  teamDriveId: string;
+  lastModifyingUser: DriveUserProfile;
+  shared: boolean;
+  ownedByMe: boolean;
+  capabilities: any;
+  viewersCanCopyContent: boolean;
+  writersCanShare: boolean;
+  permissions: any[];
+  hasAugmentedPermissions: boolean;
+  folderColorRgb: string;
+  originalFilename: string;
+  fullFileExtensions: string;
+  fileExtension: string;
+  md5Checksum: string;
+  size: number;
+  quotaBytesUsed: number;
+  headRevisionId: string;
+  contentHints: {
+    thumbnail: {
+      image: any,
+      mimeType: string;
+    }
+    indexableText: string;
+  };
+  imageMediaMetadata: {
+    width: number,
+    height: number;
+    rotation: number;
+    location: {
+      latitude: number,
+      longitude: number,
+      altitude: number
+    };
+    time: string;
+    // more
+  };
+  videoMediaMetadata: {
+    width: number;
+    height: number;
+    durationMillis: number;
+  };
+  isAppAuthorized: boolean;
 }
+
+// https://developers.google.com/drive/v3/reference/files/list
+interface DriveFilesListResponse {
+  kind: string;
+  nextPageToken: string;
+  incompleteSearch: boolean;
+  files: DriveFileResource[];
+}
+
+export interface DriveUserProfile {
+  kind: string;
+  displayName: string;
+  photoLink: string;
+  me: boolean;
+  permissionId: string;
+  emailAddress: string;
+}
+
+export interface DriveFileCardDetails {
+  id: string;
+  name: string;
+  mimeType: string;
+  description: string;
+  starred: boolean;
+  trashed: boolean;
+  trashingUser: DriveUserProfile;
+  trashedTime: number;
+  version: number;
+  webContentLink: string;
+  webViewLink: string;
+  iconLink: string;
+  thumbnailLink: string;
+  viewedByMe: boolean;
+  viewedByMeTime: number;
+  createdTime: number;
+  modifiedTime: number;
+  modifiedByMe: boolean;
+  modifiedByMeTime: number;
+  sharedWithMeTime: number;
+  sharingUser: DriveUserProfile;
+  owners: DriveUserProfile[];
+  teamDriveId: string;
+  lastModifyingUser: DriveUserProfile;
+  shared: boolean;
+  ownedByMe: boolean;
+  fileExtension: string;
+  md5Checksum: string;
+  size: number;
+  contentHints: {
+    thumbnail: {
+      image: any,
+      mimeType: string;
+    }
+    indexableText: string;
+  };
+  imageMediaMetadata: {
+    width: number,
+    height: number;
+    rotation: number;
+    location: {
+      latitude: number,
+      longitude: number,
+      altitude: number
+    };
+    time: string;
+  };
+  videoMediaMetadata: {
+    width: number;
+    height: number;
+    durationMillis: number;
+  };
+}
+
 export class GoogleDriveService extends GoogleService {
 
   getDescriptor(context: Context): ServiceDescriptor {
@@ -110,104 +204,149 @@ export class GoogleDriveService extends GoogleService {
     if (!query) {
       return new RestServiceResult(null, 400, "Search query q is missing");
     }
+    try {
+      const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query, null);
+      const result: SearchResult = {
+        matches: feedItems
+      };
+      return new RestServiceResult(result);
+    } catch (err) {
+      return new RestServiceResult(null, 503, err.toString());
+    }
+  }
+
+  async handleFeed(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    const braidUserId = request.query.braidUserId;
+    const googleUserId = request.query.accountId;
+    if (!braidUserId || !googleUserId) {
+      return new RestServiceResult(null, 400, "braidUserId and/or id parameter is missing");
+    }
+    const since = request.query.since;
+    if (!since) {
+      return new RestServiceResult(null, 400, "since param is missing");
+    }
+    try {
+      const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, null, since);
+      const result: FeedResult = {
+        items: feedItems
+      };
+      return new RestServiceResult(result);
+    } catch (err) {
+      return new RestServiceResult(null, 503, err.toString());
+    }
+  }
+
+  private parseFileDate(value: string): number {
+    if (!value) {
+      return null;
+    }
+    return moment('2012-07-04T18:10:00.000+09:00').unix();
+  }
+
+  private formatFileDate(value: number): string {
+    const RFC_3339 = 'YYYY-MM-DDTHH:mm:ss';
+    return moment.utc().format(RFC_3339);
+  }
+
+  private async handleFetchInternal(context: Context, braidUserId: string, googleUserId: string, query: string, since = 0): Promise<FeedItem[]> {
     const googleUser = await googleUsers.findByUserAndGoogleId(context, braidUserId, googleUserId);
     if (!googleUser) {
-      return new RestServiceResult(null, 401, "User is missing or invalid");
+      throw new Error("User missing or invalid");
     }
-    return new Promise<RestServiceResult>((resolve, reject) => {
+    return new Promise<FeedItem[]>((resolve, reject) => {
       const oauthClient = this.createOauthClient(context, googleUser);
       const drive = google.drive('v3');
-      drive.files.list({
+      const args: any = {
         auth: oauthClient,
-        q: 'fullText contains "' + query + '"',
-        pageSize: 25,
+        pageSize: 20,
         orderBy: 'modifiedTime desc'
-      }, (err: any, listResponse: DriveFilesListResponse) => {
+      };
+      args.q = query ? "fullText contains '" + query + "'" : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
+      drive.files.list(args, (err: any, listResponse: DriveFilesListResponse) => {
         if (err) {
           reject(err);
+        } else if (listResponse.files.length === 0) {
+          resolve([]);
         } else {
-          const searchResult: SearchResult = {
-            matches: []
-          };
-          if (listResponse.files) {
-            for (const item of listResponse.files) {
-              if (item.id) {
-                const details = this.getDriveItemDetails(item, googleUser);
-                const match: FeedItem = {
-                  providerId: this.PROVIDER_ID,
-                  serviceId: SERVICE_ID,
-                  iconUrl: '/s/svcs/google/drive.png',
-                  details: details,
-                  url: 'https://drive.google.com/open?id=' + item.id
-                };
-                searchResult.matches.push(match);
-              }
-            }
+          const batch = new googleBatch();
+          batch.setAuth(oauthClient);
+          for (const file of listResponse.files) {
+            batch.add(drive.files.get({ fileId: file.id, userId: 'me', auth: oauthClient }));
           }
-          resolve(new RestServiceResult(searchResult));
+          batch.exec((batchError: any, getResponses: Array<GoogleBatchResponse<DriveFileResource>>) => {
+            if (batchError) {
+              reject(batchError);
+            } else {
+              const result: FeedItem[] = [];
+              for (const response of getResponses) {
+                if (response.body) {
+                  const item = response.body;
+                  let timestamp: number;
+                  if (since > 0) {
+                    timestamp = this.parseFileDate(item.modifiedTime);
+                    if (timestamp > 0 && timestamp < since) {
+                      break;
+                    }
+                  }
+                  if (item.id) {
+                    const details = this.getDriveItemDetails(item, googleUser);
+                    const match: FeedItem = {
+                      timestamp: timestamp,
+                      providerId: this.PROVIDER_ID,
+                      serviceId: SERVICE_ID,
+                      iconUrl: '/s/svcs/google/drive.png',
+                      details: details,
+                      url: 'https://drive.google.com/open?id=' + item.id
+                    };
+                    result.push(match);
+                  }
+                }
+              }
+              resolve(result);
+            }
+          });
         }
       });
     });
   }
 
-  private getDriveItemDetails(item: any, googleUser: GoogleUser): any {
-    return {
+  private getDriveItemDetails(item: any, googleUser: GoogleUser): DriveFileCardDetails {
+    const result: DriveFileCardDetails = {
       id: item.id,
-      type: item.type,
-      filename: item.name,
+      name: item.name,
+      mimeType: item.mimeType,
+      description: item.description,
+      starred: item.starred,
+      trashed: item.trashed,
+      trashingUser: item.trashingUser,
+      trashedTime: this.parseFileDate(item.trashedTime),
+      version: item.version,
+      webContentLink: item.webContentLink,
+      webViewLink: item.webViewLink,
+      iconLink: item.iconLink,
+      thumbnailLink: item.thumbnailLink,
+      viewedByMe: item.viewedByMe,
+      viewedByMeTime: this.parseFileDate(item.viewedByMeTime),
+      createdTime: this.parseFileDate(item.createdTime),
+      modifiedTime: this.parseFileDate(item.modifiedTime),
+      modifiedByMe: item.modifiedByMe,
+      modifiedByMeTime: this.parseFileDate(item.modifiedByMeTime),
+      sharedWithMeTime: this.parseFileDate(item.sharedWithMeTime),
+      sharingUser: item.sharingUser,
+      owners: item.owners,
+      teamDriveId: item.teamDriveId,
+      lastModifyingUser: item.lastModifyingUser,
+      shared: item.shared,
+      ownedByMe: item.ownedByMe,
+      fileExtension: item.fileExtension,
+      md5Checksum: item.md5Checksum,
+      size: item.size,
+      contentHints: item.contentHints,
+      imageMediaMetadata: item.imageMediaMetadata,
+      videoMediaMetadata: item.videoMediaMetadata
     };
+    return result;
   }
-
-  async handleFeed(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    // const braidUserId = request.query.braidUserId;
-    // const googleUserId = request.query.accountId;
-    // if (!braidUserId || !googleUserId) {
-    //   return new RestServiceResult(null, 400, "braidUserId and/or id parameter is missing");
-    // }
-    // const since = request.query.since;
-    // if (!since) {
-    //   return new RestServiceResult(null, 400, "since param is missing");
-    // }
-    // const googleUser = await googleUsers.findByUserAndGoogleId(context, braidUserId, googleUserId);
-    // if (!googleUser) {
-    //   return new RestServiceResult(null, 401, "User is missing or invalid");
-    // }
-    // return new Promise<RestServiceResult>((resolve, reject) => {
-    //   const oauthClient = this.createOauthClient(context, googleUser);
-    //   const drive = google.drive('v3');
-    //   drive.files.list({
-    //     auth: oauthClient,
-    //     pageSize: 100,
-    //     orderBy: 'modifiedTime desc'
-    //   }, (err: any, listResponse: DriveFilesListResponse) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       const feedResult: FeedResult = {
-    //         items: []
-    //       };
-    //       if (listResponse.files) {
-    //         for (const item of listResponse.files) {
-    //           if (item.id) {
-    //             const details = this.getDriveItemDetails(item, googleUser);
-    //             const item: FeedItem = {
-    //               providerId: this.PROVIDER_ID,
-    //               serviceId: SERVICE_ID,
-    //               iconUrl: '/s/svcs/google/drive.png',
-    //               details: details,
-    //               url: 'https://drive.google.com/open?id=' + item.id
-    //             };
-    //             searchResult.matches.push(match);
-    //           }
-    //         }
-    //       }
-    //       resolve(new RestServiceResult(searchResult));
-    //     }
-    //   });
-    // });
-    return null;
-  }
-
 }
 
 const googleDriveService = new GoogleDriveService();

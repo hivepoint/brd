@@ -3,6 +3,7 @@ import { Context } from "./interfaces/context";
 import { Request, Response } from 'express';
 import { v4 as uuid } from 'node-uuid';
 import { users, User } from "./db";
+import { clock } from "./utils/clock";
 
 const USERID_COOKIE_NAME = 'braid-user-id';
 
@@ -32,6 +33,11 @@ export class UserManager {
     }
   }
 
+  async updateCaughtUp(context: Context): Promise<void> {
+    if (context.user) {
+      await users.updateCaughtUp(context, context.user, clock.now());
+    }
+  }
 }
 
 const userManager = new UserManager();

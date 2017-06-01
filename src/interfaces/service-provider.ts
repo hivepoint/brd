@@ -33,6 +33,7 @@ export interface ServiceProviderDescriptor {
 }
 
 export interface FeedItem {
+  timestamp: number;
   providerId: string;
   serviceId: string;
   iconUrl: string;
