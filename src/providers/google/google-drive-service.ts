@@ -241,7 +241,7 @@ export class GoogleDriveService extends GoogleService {
     if (!value) {
       return null;
     }
-    return moment('2012-07-04T18:10:00.000+09:00').unix();
+    return +moment(value);
   }
 
   private formatFileDate(value: number): string {
