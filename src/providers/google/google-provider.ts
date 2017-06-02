@@ -16,8 +16,6 @@ const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
-const PROVIDER_ID = 'com.hivepoint.google';
-
 const CLIENT_ID = '465784242367-35slo3s2c649sos2r92t9kkhkqidm8vi.apps.googleusercontent.com';
 const CLIENT_SECRET = 'HcxU0DLd_Uq0fegkYq92lrme';
 
@@ -26,6 +24,7 @@ const AUTH_URL = SERVICE_URL + '/auth';
 const AUTH_CALLBACK_URL = SERVICE_URL + '/callback';
 
 export class GoogleProvider implements RestServer, Startable {
+  PROVIDER_ID = 'com.hivepoint.google';
   createOauthClient(context: Context, googleUser?: GoogleUser): any {
     const OAuth2 = google.auth.OAuth2;
 
@@ -48,12 +47,12 @@ export class GoogleProvider implements RestServer, Startable {
   }
 
   async start(context: Context): Promise<void> {
-    await serviceProviders.upsertRecord(context, PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true));
+    await serviceProviders.upsertRecord(context, this.PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true));
   }
 
   async handleServiceProvider(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
     const description: ServiceProviderDescriptor = {
-      id: PROVIDER_ID,
+      id: this.PROVIDER_ID,
       name: 'Google',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/google.png'),
       authUrl: urlManager.getDynamicUrl(context, AUTH_URL, true),
@@ -151,7 +150,7 @@ export class GoogleProvider implements RestServer, Startable {
       return new RestServiceResult(null, 400, "Missing userToken and/or id parameters");
     }
     const result: ProviderUserProfile = {
-      providerId: PROVIDER_ID,
+      providerId: this.PROVIDER_ID,
       braidUserId: braidUserId,
       accounts: []
     };

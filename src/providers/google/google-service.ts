@@ -5,12 +5,7 @@ import { googleUsers, GoogleUser } from "../../db";
 import { utils } from "../../utils/utils";
 import { ServiceDescriptor } from "../../interfaces/service-provider";
 import { googleProvider } from "./google-provider";
-const googleBatch = require('google-batch');
-const google = googleBatch.require('googleapis');
-const dateParser = require('parse-date/silent');
-const addrparser = require('address-rfc2822');
 
-const PROVIDER_ID = 'com.hivepoint.search.google';
 const GMAIL_SERVICE_ID = 'gmail';
 const DRIVE_SERVICE_ID = 'drive';
 
@@ -22,8 +17,6 @@ export interface GoogleBatchResponse<T> {
 }
 
 export abstract class GoogleService implements RestServer {
-  protected PROVIDER_ID = 'com.hivepoint.search.google';
-
   abstract getDescriptor(context: Context): ServiceDescriptor;
   abstract getOauthScopes(): string[];
   // See https://developers.google.com/identity/protocols/googlescopes
