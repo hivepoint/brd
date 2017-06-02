@@ -27,7 +27,7 @@ class EmailCard extends Polymer.Element {
           if (this._isMe(to.address)) {
             toYou = true;
           } else {
-            toList.push(to.name || to.address);
+            toList.push(to.name || to.address.toLowerCase());
           }
         }
       }
@@ -36,7 +36,7 @@ class EmailCard extends Polymer.Element {
           if (this._isMe(cc.address)) {
             toYou = true;
           } else {
-            toList.push(cc.name || cc.address);
+            toList.push(cc.name || cc.address.toLowerCase());
           }
         }
       }
