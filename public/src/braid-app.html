@@ -176,6 +176,34 @@
         transition: all 0.5s ease;
       }
 
+      button {
+        background: rgba(81, 132, 233, 1);
+        color: white;
+        border: none;
+        font-family: inherit;
+        font-size: 15px;
+        padding: 3px 10px;
+        line-height: 1.5em;
+        cursor: pointer;
+        outline: none;
+        text-transform: uppercase;
+      }
+
+      button:hover {
+        box-shadow: 0 3px 3px -1px rgba(0, 0, 0, 0.4);
+      }
+
+      #signoutPanel {
+        padding: 20px 15px;
+        text-align: center;
+        border-top: 1px solid #e5e5e5;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fafafa;
+      }
+
       @media (max-width: 1000px) {
         #btnApps {
           display: initial;
@@ -248,6 +276,9 @@
             <template is="dom-repeat" items="{{providers}}">
               <provider-panel data="{{item}}"></provider-panel>
             </template>
+            <div id="signoutPanel" style="display: none;">
+              <button on-click="signOut">Sign out</button>
+            </div>
           </div>
         </div>
       </div>
