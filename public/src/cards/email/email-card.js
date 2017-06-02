@@ -7,11 +7,15 @@ class EmailCard extends Polymer.Element {
         observer: 'onData'
       },
       fromDisplay: String,
-      toDisplay: String
+      toDisplay: String,
+      timeDisplay: String
     };
   }
   onData() {
     if (this.data) {
+      // set timestamp
+      this.set("timeDisplay", $utils.friendlyTime(this.data.timestamp));
+
       // set From
       if (this._isMe(this.data.details.from.address)) {
         this.set("fromDisplay", "Me");
