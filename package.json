@@ -29,6 +29,7 @@
     "console-stamp": "^0.2.5",
     "cookie-parser": "^1.4.3",
     "express": "^4.15.3",
+    "express-ws": "^3.0.0",
     "google-batch": "0.0.7",
     "googleapis": "^19.0.0",
     "moment": "^2.18.1",

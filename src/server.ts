@@ -30,11 +30,14 @@ import { rootPageHandler } from "./page-handlers/root-handler";
 import { userRestServer } from "./user-rest-server";
 import { urlManager } from "./url-manager";
 
+interface ExpressAppWithWebsocket extends express.Application {
+  ws: (path: string, callback: (ws: any, request: Request) => void) => void;
+}
 export class Server implements RestServiceRegistrar {
 
   private version = Date.now();
   private running = false;
-  private app: express.Application;
+  private app: ExpressAppWithWebsocket;
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
@@ -42,6 +45,7 @@ export class Server implements RestServiceRegistrar {
   private initializables: Initializable[] = [rootPageHandler, emailManager, database];
   private startables: Startable[] = [googleProvider, servicesManager];
   private serverStatus = 'starting';
+  private expressWs: any;
 
   async start(context: Context): Promise<void> {
     process.on('unhandledRejection', (reason: any) => {
@@ -73,7 +77,8 @@ export class Server implements RestServiceRegistrar {
     if (context.getConfig('client.maxAge')) {
       this.maxAge = context.getConfig('client.maxAge');
     }
-    this.app = express();
+    this.app = (express() as any) as ExpressAppWithWebsocket;
+
     this.app.use(compression());
     this.app.use(bodyParser.json()); // for parsing application/json
     this.app.use(bodyParser.urlencoded({
@@ -114,6 +119,43 @@ export class Server implements RestServiceRegistrar {
         logger.log(context, "server", "startServer", "Listening for client connections on port " + context.getConfig('client.port'));
       }
     });
+    this.handleWebsockets(context);
+  }
+
+  private handleWebsockets(context: Context): void {
+    this.expressWs = require('express-ws')(this.app, this.clientServer);
+    this.app.ws('/d/client', (ws: any, request: Request) => {
+      ws.on('message', (message: MessageEvent) => {
+        void this.handleWebsocketMessage(context.getConfigData(), ws, request, message);
+      });
+      ws.on('close', () => {
+        void this.handleWebsocketClose(context.getConfigData(), ws, request);
+      });
+    });
+  }
+
+  private async handleWebsocketMessage(parentContextData: any, ws: any, request: Request, message: MessageEvent): Promise<void> {
+    let error: any;
+    const context = new ExecutionContext('ws-message', parentContextData);
+    try {
+      const message = message.
+    } catch (err) {
+      error = err;
+    } finally {
+      context.finish(error);
+    }
+  }
+
+  private async handleWebsocketClose(parentContextData: any, ws: any, request: Request): Promise<void> {
+    let error: any;
+    const context = new ExecutionContext('ws-close', parentContextData);
+    try {
+
+    } catch (err) {
+      error = err;
+    } finally {
+      context.finish(error);
+    }
   }
 
   private registerHandlers(context: Context) {

@@ -10,7 +10,7 @@ export class ExecutionContext implements Context {
   private configData: any;
   private started: number;
 
-  constructor(id: string, configData: any, channel?: string) {
+  constructor(id: string, configData: any) {
     this.id = id + '-' + Math.floor(Math.random() * 1000);
     this.serverId = configData.serverId;
     this.configData = configData;
