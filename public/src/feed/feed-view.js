@@ -11,9 +11,14 @@ class FeedView extends Polymer.Element {
     if (dummy) {
       this.createDummyItems();
     } else {
+      this.set("items", []);
+      this.$.loading.style.display = "";
       $service.getFeed().then((response) => {
+        this.$.loading.style.display = "none";
         this.set("items", response.items || []);
+        this.$.none.style.display = this.items.length ? "none" : "";
       }).catch((err) => {
+        this.$.loading.style.display = "none";
         console.error("Error fetching feed: ", err);
       });
     }

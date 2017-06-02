@@ -19,6 +19,13 @@
         padding: 10px 15px;
       }
 
+      .info {
+        padding: 40px 0;
+        text-align: center;
+        font-size: 16px;
+        color: #808080;
+      }
+
       @media (max-width: 600px) {
         #container {
           padding: 10px 8px;
@@ -32,9 +39,11 @@
       }
     </style>
     <div id="container">
+      <div id="loading" class="info" style="display: none;">Loading...</div>
       <template is="dom-repeat" items="{{items}}">
         <card-view data="{{item}}"></card-view>
       </template>
+      <div id="none" class="info" style="display: none;">There are not items in your feed.</div>
     </div>
   </template>
   <script src="feed-view.js"></script>
