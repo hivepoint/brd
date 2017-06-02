@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
 import { utils } from "../../utils/utils";
-import { ServiceDescriptor } from "../../interfaces/service-provider";
+import { ServiceDescriptor, ClientMessageDeliverer } from "../../interfaces/service-provider";
 import { googleProvider } from "./google-provider";
 import { ServiceHandler, ClientMessage } from "../../interfaces/service-handler";
 
@@ -37,4 +37,8 @@ export abstract class GoogleService implements ServiceHandler {
 
   abstract handleClientCardMessage(context: Context, message: ClientMessage): Promise<void>;
   abstract handleClientSocketClosed(context: Context): Promise<void>;
+  registerClientMessageDeliveryService(context: Context, messageDeliverer: ClientMessageDeliverer) {
+
+  }
+
 }

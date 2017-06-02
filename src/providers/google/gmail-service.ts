@@ -9,7 +9,7 @@ import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
 import { logger } from "../../utils/logger";
 import { clock } from "../../utils/clock";
-import { ServiceHandler, ClientMessage } from "../../interfaces/service-handler";
+import { ServiceHandler, ClientMessage } from "../../interfaces/service-provider";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -78,7 +78,7 @@ interface GmailListResponse {
 
 const MAX_CACHE_LIFETIME = 1000 * 60 * 5;
 
-export class GmailService extends GoogleService implements ServiceHandler {
+export class GmailService extends GoogleService {
 
   getDescriptor(context: Context): ServiceDescriptor {
     return {
