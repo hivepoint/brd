@@ -8,11 +8,16 @@ class EmailCard extends Polymer.Element {
       },
       fromDisplay: String,
       toDisplay: String,
-      timeDisplay: String
+      timeDisplay: String,
+      snippet: String
     };
   }
   onData() {
     if (this.data) {
+      //unescape snippet
+      var snippet = $utils.unescapeHtml(this.data.details.snippet)
+      this.set("snippet", snippet);
+
       // set timestamp
       this.set("timeDisplay", $utils.friendlyTime(this.data.timestamp));
 
