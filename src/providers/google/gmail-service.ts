@@ -9,6 +9,7 @@ import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
 import { logger } from "../../utils/logger";
 import { clock } from "../../utils/clock";
+import { ServiceHandler, ClientMessage } from "../../interfaces/service-handler";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -77,7 +78,7 @@ interface GmailListResponse {
 
 const MAX_CACHE_LIFETIME = 1000 * 60 * 5;
 
-export class GmailService extends GoogleService {
+export class GmailService extends GoogleService implements ServiceHandler {
 
   getDescriptor(context: Context): ServiceDescriptor {
     return {
@@ -90,11 +91,6 @@ export class GmailService extends GoogleService {
 
   getOauthScopes(): string[] {
     return ['https://www.googleapis.com/auth/gmail.readonly'];
-  }
-
-  async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.search, true, false);
-    registrar.registerHandler(context, this.handleFeed.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.feed, true, false);
   }
 
   async handleSearch(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -320,6 +316,14 @@ export class GmailService extends GoogleService {
     }
     return null;
   }
+
+  async handleClientCardMessage(context: Context, message: ClientMessage): Promise<void> {
+
+  }
+  async handleClientSocketClosed(context: Context): Promise<void> {
+
+  }
+
 }
 
 const gmailService = new GmailService();

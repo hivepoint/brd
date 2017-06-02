@@ -1,3 +1,5 @@
+import { Context } from "./context";
+
 export const SERVICE_URL_SUFFIXES = {
   search: '/search',
   feed: '/feed'
@@ -47,4 +49,23 @@ export interface SearchResult {
 
 export interface FeedResult {
   items: FeedItem[];
+}
+
+export interface ClientMessage {
+  type: string;
+  serviceId?: string;
+  accountId?: string;
+  details?: any;
+}
+
+export interface ClientMessageDeliverer {
+  deliverMessage(context: Context, message: ClientMessage): Promise<void>;
+}
+
+export interface ServiceHandler {
+  providerId: string;
+  serviceId: string;
+  handleClientCardMessage(context: Context, message: ClientMessage): Promise<void>;
+  handleClientSocketClosed(context: Context): Promise<void>;
+  registerClientMessageDeliveryService(context: Context, messageDeliverer: ClientMessageDeliverer): void;
 }

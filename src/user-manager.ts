@@ -38,6 +38,13 @@ export class UserManager {
       await users.updateCaughtUp(context, context.user, clock.now());
     }
   }
+
+  async onWebsocketEvent(context: Context, ws: any, request: Request): Promise<void> {
+    const userId = request.cookies[USERID_COOKIE_NAME];
+    if (userId) {
+      context.user = await users.findById(context, userId);
+    }
+  }
 }
 
 const userManager = new UserManager();

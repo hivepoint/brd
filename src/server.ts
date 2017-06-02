@@ -29,6 +29,7 @@ import { servicesManager } from "./services-manager";
 import { rootPageHandler } from "./page-handlers/root-handler";
 import { userRestServer } from "./user-rest-server";
 import { urlManager } from "./url-manager";
+import { ServiceHandler, ClientMessage } from "./interfaces/service-handler";
 
 interface ExpressAppWithWebsocket extends express.Application {
   ws: (path: string, callback: (ws: any, request: Request) => void) => void;
@@ -44,6 +45,7 @@ export class Server implements RestServiceRegistrar {
   private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, servicesRestServer, googleProvider, gmailService, googleDriveService];
   private initializables: Initializable[] = [rootPageHandler, emailManager, database];
   private startables: Startable[] = [googleProvider, servicesManager];
+  private serviceHandlers: ServiceHandler[] = [];
   private serverStatus = 'starting';
   private expressWs: any;
 
@@ -137,8 +139,26 @@ export class Server implements RestServiceRegistrar {
   private async handleWebsocketMessage(parentContextData: any, ws: any, request: Request, message: MessageEvent): Promise<void> {
     let error: any;
     const context = new ExecutionContext('ws-message', parentContextData);
+    await userManager.onWebsocketEvent(context, ws, request);
     try {
-      const message = message.
+      const msg = message.data as ClientMessage;
+      if (!msg || !msg.type) {
+        throw new Error("Unexpected or invalid message: " + JSON.stringify(message));
+      }
+      switch (msg.type) {
+        case 'card':
+          for (const handler of this.serviceHandlers) {
+            if (handler.serviceId === msg.serviceId) {
+              await handler.handleClientCardMessage(context, msg);
+            }
+          }
+          break;
+        case 'app':
+          await this.handleClientAppMessage(context, msg);
+          break;
+        default:
+          throw new Error("Unhandled client message type " + msg.type);
+      }
     } catch (err) {
       error = err;
     } finally {
@@ -146,11 +166,17 @@ export class Server implements RestServiceRegistrar {
     }
   }
 
+  private async handleClientAppMessage(context: Context, message: ClientMessage): Promise<void> {
+    // noop
+  }
+
   private async handleWebsocketClose(parentContextData: any, ws: any, request: Request): Promise<void> {
     let error: any;
     const context = new ExecutionContext('ws-close', parentContextData);
     try {
-
+      for (const handler of this.serviceHandlers) {
+        await handler.handleClientSocketClosed(context);
+      }
     } catch (err) {
       error = err;
     } finally {

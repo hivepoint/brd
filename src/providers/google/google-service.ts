@@ -5,6 +5,8 @@ import { googleUsers, GoogleUser } from "../../db";
 import { utils } from "../../utils/utils";
 import { ServiceDescriptor } from "../../interfaces/service-provider";
 import { googleProvider } from "./google-provider";
+import { ServiceHandler, ClientMessage } from "../../interfaces/service-handler";
+
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -21,16 +23,18 @@ export interface GoogleBatchResponse<T> {
   body: T;
 }
 
-export abstract class GoogleService implements RestServer {
-  protected PROVIDER_ID = 'com.hivepoint.search.google';
+export abstract class GoogleService implements ServiceHandler {
+  providerId = 'com.hivepoint.search.google';
+  abstract serviceId: string;
 
   abstract getDescriptor(context: Context): ServiceDescriptor;
   abstract getOauthScopes(): string[];
   // See https://developers.google.com/identity/protocols/googlescopes
 
-  abstract initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void>;
-
   protected createOauthClient(context: Context, googleUser?: GoogleUser): any {
     return googleProvider.createOauthClient(context, googleUser);
   }
+
+  abstract handleClientCardMessage(context: Context, message: ClientMessage): Promise<void>;
+  abstract handleClientSocketClosed(context: Context): Promise<void>;
 }

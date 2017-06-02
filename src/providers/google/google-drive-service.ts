@@ -7,6 +7,7 @@ import { GoogleService } from "./google-service";
 import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult, FeedResult } from "../../interfaces/service-provider";
 import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
+import { ServiceHandler, ClientMessage } from "../../interfaces/service-handler";
 
 import * as moment from 'moment';
 import { clock } from "../../utils/clock";
@@ -391,6 +392,14 @@ export class GoogleDriveService extends GoogleService {
     };
     return result;
   }
+
+  async handleClientCardMessage(context: Context, message: ClientMessage): Promise<void> {
+
+  }
+  async handleClientSocketClosed(context: Context): Promise<void> {
+
+  }
+
 }
 
 const googleDriveService = new GoogleDriveService();
