@@ -127,9 +127,6 @@ export interface DriveFileCardDetails {
   mimeType: string;
   description: string;
   starred: boolean;
-  trashed: boolean;
-  trashingUser: DriveUserProfile;
-  trashedTime: number;
   version: number;
   webContentLink: string;
   webViewLink: string;
@@ -261,7 +258,8 @@ export class GoogleDriveService extends GoogleService {
     const args: any = {
       auth: oauthClient,
       pageSize: 25,
-      orderBy: 'modifiedTime desc'
+      orderBy: 'modifiedTime desc',
+      fields: "nextPageToken, files(id, name, mimeType, description, starred, version, webContentLink, webViewLink, iconLink, thumbnailLink, viewedByMe, viewedByMeTime, createdTime, modifiedTime, modifiedByMe, modifiedByMeTime, sharedWithMeTime, sharingUser, owners, teamDriveId, lastModifyingUser, shared, ownedByMe, fileExtension, md5Checksum, size, imageMediaMetadata, videoMediaMetadata)"
     };
     args.q = query ? "fullText contains '" + query + "'" : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
     const listResponse = await this.listFiles(context, args, googleUser);
@@ -269,48 +267,36 @@ export class GoogleDriveService extends GoogleService {
       return [];
     }
 
-    const ids: string[] = [];
-    for (const file of listResponse.files) {
-      ids.push(file.id);
-    }
-    const cacheItems = await googleObjectCache.findItems(context, braidUserId, googleUserId, 'drive-file', ids);
-    const files: DriveFileResource[] = [];
+    // const ids: string[] = [];
+    // for (const file of listResponse.files) {
+    //   ids.push(file.id);
+    // }
+    // const cacheItems = await googleObjectCache.findItems(context, braidUserId, googleUserId, 'drive-file', ids);
+    // const files: DriveFileResource[] = [];
 
-    const drive = google.drive('v3');
-    const batch = new googleBatch();
-    batch.setAuth(oauthClient);
-    let batchCount = 0;
-    for (const file of listResponse.files) {
-      let found = false;
-      for (const cacheItem of cacheItems) {
-        if (cacheItem.objectId === file.id && clock.now() - cacheItem.at < MAX_CACHE_LIFETIME) {
-          files.push(cacheItem.details as DriveFileResource);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        batch.add(drive.files.get({ fileId: file.id, userId: 'me', auth: oauthClient }));
-        batchCount++;
-      }
-    }
-    if (batchCount > 0) {
-      logger.log(context, 'drive', 'handleFetchInternal', 'Fetching batch of ' + batchCount + " files");
-      const batchResults: Array<GoogleBatchResponse<DriveFileResource>> = await this.execBatch(context, batch);
-      for (const batchResult of batchResults) {
-        if (batchResult.body) {
-          files.push(batchResult.body);
-          await googleObjectCache.upsertRecord(context, braidUserId, googleUserId, 'drive-file', batchResult.body.id, batchResult.body);
-        }
-      }
-    }
-    files.sort((a, b) => {
+    // const drive = google.drive('v3');
+    // for (const file of listResponse.files) {
+    //   let found = false;
+    //   for (const cacheItem of cacheItems) {
+    //     if (cacheItem.objectId === file.id && clock.now() - cacheItem.at < MAX_CACHE_LIFETIME) {
+    //       files.push(cacheItem.details as DriveFileResource);
+    //       found = true;
+    //       break;
+    //     }
+    //   }
+    //   if (!found) {
+    //     const fileResource = await this.getFile(context, file.id, oauthClient);
+    //     files.push(fileResource);
+    //     await googleObjectCache.upsertRecord(context, braidUserId, googleUserId, 'drive-file', file.id, fileResource);
+    //   }
+    // }
+    listResponse.files.sort((a, b) => {
       const t1 = this.parseFileDate(a.modifiedTime);
       const t2 = this.parseFileDate(b.modifiedTime);
       return t2 - t1;
     });
     const result: FeedItem[] = [];
-    for (const item of files) {
+    for (const item of listResponse.files) {
       let timestamp: number;
       if (since > 0) {
         timestamp = this.parseFileDate(item.modifiedTime);
@@ -342,6 +328,19 @@ export class GoogleDriveService extends GoogleService {
           reject(err);
         } else {
           resolve(listResponse);
+        }
+      });
+    });
+  }
+
+  private async getFile(context: Context, fileId: string, oauthClient: any): Promise<DriveFileResource> {
+    return new Promise<DriveFileResource>((resolve, reject) => {
+      const drive = google.drive('v3');
+      void drive.files.get({ fileId: fileId, userId: 'me', auth: oauthClient }, (err: any, response: DriveFileResource) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(response);
         }
       });
     });
