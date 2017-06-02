@@ -4,7 +4,7 @@ const path = require('path');
 import { config } from './config';
 import { ExecutionContext } from "./execution-context";
 
-const VERSION = 1;
+const VERSION = 2;
 
 function start() {
   // http://stackoverflow.com/questions/9768444/possible-eventemitter-memory-leak-detected

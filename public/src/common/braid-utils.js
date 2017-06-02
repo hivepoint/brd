@@ -8,6 +8,12 @@ class BraidUtils {
       sameElse: 'M/D/YYYY'
     });
   }
+
+  unescapeHtml(input) {
+    var txt = document.createElement("textarea");
+    txt.innerHTML = input;
+    return txt.value;
+  }
 }
 
 window.$utils = new BraidUtils();
