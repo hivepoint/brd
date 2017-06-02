@@ -297,9 +297,8 @@ export class GoogleDriveService extends GoogleService {
     });
     const result: FeedItem[] = [];
     for (const item of listResponse.files) {
-      let timestamp: number;
+      const timestamp = this.parseFileDate(item.modifiedTime);
       if (since > 0) {
-        timestamp = this.parseFileDate(item.modifiedTime);
         if (timestamp > 0 && timestamp < since) {
           break;
         }
