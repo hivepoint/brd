@@ -30,6 +30,7 @@ import { rootPageHandler } from "./page-handlers/root-handler";
 import { userRestServer } from "./user-rest-server";
 import { urlManager } from "./url-manager";
 import { ServiceHandler, ClientMessage } from "./interfaces/service-provider";
+import { clock } from "./utils/clock";
 
 interface ExpressAppWithWebsocket extends express.Application {
   ws: (path: string, callback: (ws: any, request: Request) => void) => void;
@@ -127,8 +128,15 @@ export class Server implements RestServiceRegistrar {
   private handleWebsockets(context: Context): void {
     this.expressWs = require('express-ws')(this.app, this.clientServer);
     this.app.ws('/d/client', (ws: any, request: Request) => {
-      ws.on('message', (message: MessageEvent) => {
-        void this.handleWebsocketMessage(context.getConfigData(), ws, request, message);
+      // const timer = clock.setInterval(() => {
+      //   ws.send('__ping__');
+      // });
+      ws.on('message', (message: any) => {
+        if (message && typeof message === 'string') {
+          void this.handleWebsocketMessage(context.getConfigData(), ws, request, message);
+        } else {
+          console.warn("Invalid message received on socket", message);
+        }
       });
       ws.on('close', () => {
         void this.handleWebsocketClose(context.getConfigData(), ws, request);
@@ -136,12 +144,12 @@ export class Server implements RestServiceRegistrar {
     });
   }
 
-  private async handleWebsocketMessage(parentContextData: any, ws: any, request: Request, message: MessageEvent): Promise<void> {
+  private async handleWebsocketMessage(parentContextData: any, ws: any, request: Request, message: string): Promise<void> {
     let error: any;
     const context = new ExecutionContext('ws-message', parentContextData);
     await userManager.onWebsocketEvent(context, ws, request);
     try {
-      const msg = message.data as ClientMessage;
+      const msg = JSON.parse(message) as ClientMessage;
       if (!msg || !msg.type) {
         throw new Error("Unexpected or invalid message: " + JSON.stringify(message));
       }
@@ -160,6 +168,7 @@ export class Server implements RestServiceRegistrar {
           throw new Error("Unhandled client message type " + msg.type);
       }
     } catch (err) {
+      console.warn("Exception handling client message", err);
       error = err;
     } finally {
       await context.finish(error);
