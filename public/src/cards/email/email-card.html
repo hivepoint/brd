@@ -57,26 +57,14 @@
       </div>
       <div class="flex addressCell">
         <div class="horizontal layout">
-          <div class="from flex">{{data.details.from.name}}</div>
+          <div class="from flex">{{fromDisplay}}</div>
           <div class="timestamp">{{data.timestamp}}</div>
         </div>
-        <div class="to">
-          To you and 3 others
-        </div>
+        <div class="to">{{toDisplay}}</div>
       </div>
     </div>
     <div class="subject">{{data.details.subject}}</div>
     <div class="snippet"><span>{{data.details.snippet}}</span>...</div>
   </template>
-  <script>
-    class EmailCard extends Polymer.Element {
-      static get is() { return 'email-card'; }
-      static get properties() {
-        return {
-          data: Object
-        };
-      }
-    }
-    window.customElements.define(EmailCard.is, EmailCard);
-  </script>
+  <script src="email-card.js"></script>
 </dom-module>
