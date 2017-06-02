@@ -1,0 +1,72 @@
+<link rel="import" href="../../../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<dom-module id="file-card">
+  <template>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
+       :host {
+        display: block;
+      }
+
+      a,
+      a:visited {
+        outline: none;
+        color: inherit !important;
+        text-decoration: none;
+      }
+
+      .iconCell {
+        padding: 10px;
+      }
+
+      .icon {
+        width: 36px;
+        height: 36px;
+      }
+
+      .addressCell {
+        padding: 8px 10px 5px 3px;
+        color: #777;
+      }
+
+      .from {
+        color: #242424;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+      }
+
+      .timestamp {
+        font-size: 9pt;
+        letter-spacing: 0.05em;
+      }
+
+      .fileName {
+        color: #242424;
+        padding-bottom: 5px;
+        font-size: 11pt;
+        font-weight: bold;
+        font-family: 'Open Sans', 'Roboto', 'Noto', sans-serif;
+      }
+    </style>
+    <div id="header" class="horizontal layout">
+      <div class="iconCell">
+        <a target="_blank" href$="{{data.url}}"><img class="icon" src$="{{data.iconUrl}}" /></a>
+      </div>
+      <div class="flex addressCell">
+        <div class="fileName">{{data.details.name}}</div>
+        <div class="modifiedPanel">
+          Last modified by <span class="from">{{data.details.lastModifyingUser.displayName}}</span> - <span class="timestamp">{{data.timestamp}}</span>
+        </div>
+      </div>
+    </div>
+  </template>
+  <script>
+    class FileCard extends Polymer.Element {
+      static get is() { return 'file-card'; }
+      static get properties() {
+        return {
+          data: Object
+        };
+      }
+    }
+    window.customElements.define(FileCard.is, FileCard);
+  </script>
+</dom-module>
