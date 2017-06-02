@@ -224,6 +224,7 @@ export class GmailService extends GoogleService {
         if (err) {
           reject(err);
         } else {
+          logger.log(context, 'gmail', 'listGmailMessages', 'Listing gmail messages ... Found ' + listResponse.messages.length);
           resolve(listResponse);
         }
       });

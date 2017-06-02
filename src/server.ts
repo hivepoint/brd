@@ -42,7 +42,7 @@ export class Server implements RestServiceRegistrar {
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
-  private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, servicesRestServer];
+  private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, servicesRestServer, googleProvider, gmailService, googleDriveService];
   private initializables: Initializable[] = [rootPageHandler, emailManager, database];
   private startables: Startable[] = [googleProvider, servicesManager];
   private serviceHandlers: ServiceHandler[] = [gmailService, googleDriveService];

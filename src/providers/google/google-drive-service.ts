@@ -267,30 +267,6 @@ export class GoogleDriveService extends GoogleService {
     if (listResponse.files.length === 0) {
       return [];
     }
-
-    // const ids: string[] = [];
-    // for (const file of listResponse.files) {
-    //   ids.push(file.id);
-    // }
-    // const cacheItems = await googleObjectCache.findItems(context, braidUserId, googleUserId, 'drive-file', ids);
-    // const files: DriveFileResource[] = [];
-
-    // const drive = google.drive('v3');
-    // for (const file of listResponse.files) {
-    //   let found = false;
-    //   for (const cacheItem of cacheItems) {
-    //     if (cacheItem.objectId === file.id && clock.now() - cacheItem.at < MAX_CACHE_LIFETIME) {
-    //       files.push(cacheItem.details as DriveFileResource);
-    //       found = true;
-    //       break;
-    //     }
-    //   }
-    //   if (!found) {
-    //     const fileResource = await this.getFile(context, file.id, oauthClient);
-    //     files.push(fileResource);
-    //     await googleObjectCache.upsertRecord(context, braidUserId, googleUserId, 'drive-file', file.id, fileResource);
-    //   }
-    // }
     listResponse.files.sort((a, b) => {
       const t1 = this.parseFileDate(a.modifiedTime);
       const t2 = this.parseFileDate(b.modifiedTime);
@@ -327,6 +303,7 @@ export class GoogleDriveService extends GoogleService {
         if (err) {
           reject(err);
         } else {
+          logger.log(context, 'google-drive', 'listFiles', 'Listing files ... Found ' + listResponse.files.length);
           resolve(listResponse);
         }
       });
