@@ -90,6 +90,10 @@ class BraidService extends Polymer.Element {
     return this.rest.post(this.restBase + "/waitingList", request);
   }
 
+  signOut() {
+    return this.rest.get(this.restBase + "/user/signout");
+  }
+
   getServices() {
     return this.rest.getJson(this.restBase + "/services");
   }
