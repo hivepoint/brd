@@ -9,15 +9,16 @@ export class ServiceSearchMatchesCollection extends MongoCollection {
   private serviceSearchMatches: Collection;
 
   protected async setup(context: Context) {
-    this.serviceSearchMatches = mongoDatabase.db.collection('serviceSearchMatches');
-    await this.serviceSearchMatches.createIndex({ searchId: 1, providerId: 1, serviceId: 1 }, { unique: true });
+    this.serviceSearchMatches = mongoDatabase.db.collection('serviceSearchMatches2');
+    await this.serviceSearchMatches.createIndex({ searchId: 1, providerId: 1, serviceId: 1, accountId: 1 }, { unique: true });
   }
 
-  async insertRecord(context: Context, searchId: string, providerId: string, serviceId: string, results: FeedItem[]): Promise<ServiceSearchMatches> {
+  async insertRecord(context: Context, searchId: string, providerId: string, serviceId: string, accountId: string, results: FeedItem[]): Promise<ServiceSearchMatches> {
     const record: ServiceSearchMatches = {
       searchId: searchId,
       providerId: providerId,
       serviceId: serviceId,
+      accountId: accountId,
       results: results,
       created: clock.now()
     };
@@ -25,11 +26,12 @@ export class ServiceSearchMatchesCollection extends MongoCollection {
     return record;
   }
 
-  async findById(context: Context, searchId: string, providerId: string, serviceId: string): Promise<ServiceSearchMatches> {
+  async findById(context: Context, searchId: string, providerId: string, serviceId: string, accountId: string): Promise<ServiceSearchMatches> {
     return await this.serviceSearchMatches.findOne({
       searchId: searchId,
       providerId: providerId,
-      serviceId: serviceId
+      serviceId: serviceId,
+      accountId: accountId
     });
   }
 }
@@ -38,6 +40,7 @@ export interface ServiceSearchMatches {
   searchId: string;
   providerId: string;
   serviceId: string;
+  accountId: string;
   results: FeedItem[];
   created: number;
 }

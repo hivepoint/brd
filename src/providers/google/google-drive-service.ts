@@ -222,9 +222,9 @@ export class GoogleDriveService extends GoogleService {
     if (!braidUserId || !googleUserId) {
       return new RestServiceResult(null, 400, "braidUserId and/or id parameter is missing");
     }
-    const since = request.query.since;
+    let since = request.query.since;
     if (!since) {
-      return new RestServiceResult(null, 400, "since param is missing");
+      since = clock.now() - 1000 * 60 * 60 * 24;
     }
     try {
       const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, null, since);
