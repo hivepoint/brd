@@ -38,6 +38,10 @@ export class UserManager {
       await users.updateCaughtUp(context, context.user, clock.now());
     }
   }
+
+  async onSignout(context: Context, request: Request, response: Response): Promise<void> {
+    response.clearCookie(USERID_COOKIE_NAME);
+  }
 }
 
 const userManager = new UserManager();
