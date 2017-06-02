@@ -1,4 +1,5 @@
 <link rel="import" href="../../../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../../../bower_components/iron-flex-layout/iron-flex-layout.html">
 <dom-module id="file-card">
   <template>
     <style is="custom-style" include="iron-flex iron-flex-alignment">
@@ -25,6 +26,7 @@
       .addressCell {
         padding: 8px 10px 5px 3px;
         color: #777;
+        font-size: 10pt;
       }
 
       .from {
@@ -40,10 +42,48 @@
 
       .fileName {
         color: #242424;
-        padding-bottom: 5px;
+        padding: 3px 0;
         font-size: 11pt;
         font-weight: bold;
         font-family: 'Open Sans', 'Roboto', 'Noto', sans-serif;
+      }
+
+      .bodyPanel {
+        @apply --layout-horizontal;
+        padding: 5px 15px 12px;
+        color: #777;
+      }
+
+      .previewPanel {
+        background-size: cover;
+        background-position: top center;
+        background-repeat: no-repeat;
+        background-image: var(--preview-image);
+        width: 170px;
+        height: 120px;
+        border: 1px solid #e5e5e5;
+        border-radius: 0 10px 10px 10px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .ownerLabel {
+        font-weight: 400;
+        font-size: 10pt;
+        letter-spacing: 0.05em;
+        padding-bottom: 10px;
+      }
+
+      .ownerImage {
+        width: 45px;
+        height: 45px;
+        border-radius: 40px;
+        display: block;
+      }
+
+      .ownerName {
+        padding-left: 15px;
+        font-weight: 400;
       }
     </style>
     <div id="header" class="horizontal layout">
@@ -51,10 +91,31 @@
         <a target="_blank" href$="{{data.url}}"><img class="icon" src$="{{data.iconUrl}}" /></a>
       </div>
       <div class="flex addressCell">
-        <div class="fileName">{{data.details.name}}</div>
-        <div class="modifiedPanel">
-          Last modified by <span class="from">{{data.details.lastModifyingUser.displayName}}</span> - <span class="timestamp">{{data.timestamp}}</span>
+        <div class="horizontal layout">
+          <div class="flex">
+            Last modified by <span class="from">{{data.details.lastModifyingUser.displayName}}</span>
+          </div>
+          <div class="timestamp">{{data.timestamp}}</div>
         </div>
+        <div class="fileName">{{data.details.name}}</div>
+      </div>
+    </div>
+    <div class="bodyPanel">
+      <div id="ownersPanel" class="flex">
+        <div class="ownerLabel">{{ownersLabel}}</div>
+        <template is="dom-repeat" items="{{data.details.owners}}">
+          <div class="horizontal layout center">
+            <div><img class="ownerImage" src$="{{item.photoLink}}" /></div>
+            <div class="flex ownerName">{{item.displayName}}</div>
+          </div>
+        </template>
+      </div>
+      <div>
+        <a href$="{{data.url}}" target="_blank">
+          <div id="preview" class="previewPanel">
+            <img class="docIcon" src$="{{data.details.iconLink}}" />
+          </div>
+        </a>
       </div>
     </div>
   </template>
@@ -63,8 +124,24 @@
       static get is() { return 'file-card'; }
       static get properties() {
         return {
-          data: Object
+          data: {
+            type: Object,
+            observer: 'onData'
+          },
+          ownersLabel: String
         };
+      }
+      onData() {
+        if (this.data) {
+          var count = (this.data.details.owners || []).length;
+          this.$.ownersPanel.style.display = count ? "" : "none";
+          this.set("ownersLabel", count == 1 ? "Owner:" : "Owners:");
+          var thumbnail = this.data.details.thumbnailLink;
+          this.$.preview.style.display = thumbnail ? "" : "none";
+          if (thumbnail) {
+            this.updateStyles({ '--preview-image': 'url("' + thumbnail + '")' });
+          }
+        }
       }
     }
     window.customElements.define(FileCard.is, FileCard);
