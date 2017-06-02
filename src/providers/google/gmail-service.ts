@@ -109,7 +109,15 @@ export class GmailService extends GoogleService {
       return new RestServiceResult(null, 400, "Search query q is missing");
     }
     try {
-      const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query);
+      let feedItems: FeedItem[];
+      if (query.indexOf('"') < 0 && query.indexOf("'") < 0) {
+        feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, '"' + query + '"');
+        if (feedItems.length === 0) {
+          feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query);
+        }
+      } else {
+        feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query);
+      }
       const result: SearchResult = {
         matches: feedItems
       };
