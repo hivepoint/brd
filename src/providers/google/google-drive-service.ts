@@ -11,6 +11,7 @@ import { GoogleBatchResponse } from "./google-service";
 import * as moment from 'moment';
 import { clock } from "../../utils/clock";
 import { logger } from "../../utils/logger";
+import { googleProvider } from "./google-provider";
 
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -307,7 +308,7 @@ export class GoogleDriveService extends GoogleService {
         const details = this.getDriveItemDetails(item, googleUser);
         const match: FeedItem = {
           timestamp: timestamp,
-          providerId: this.PROVIDER_ID,
+          providerId: googleProvider.PROVIDER_ID,
           serviceId: SERVICE_ID,
           iconUrl: '/s/svcs/google/drive.png',
           details: details,

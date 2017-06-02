@@ -9,6 +9,7 @@ import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
 import { logger } from "../../utils/logger";
 import { clock } from "../../utils/clock";
+import { googleProvider } from "./google-provider";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -205,7 +206,7 @@ export class GmailService extends GoogleService {
       const details = this.getEmailDetails(message, googleUser);
       const match: FeedItem = {
         timestamp: this.getEmailDate(message),
-        providerId: this.PROVIDER_ID,
+        providerId: googleProvider.PROVIDER_ID,
         serviceId: SERVICE_ID,
         iconUrl: '/s/svcs/google/msg.png',
         details: details,
