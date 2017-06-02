@@ -20,4 +20,4 @@ export class MongoDatabase {
 
 const mongoDatabase = new MongoDatabase();
 
-export { mongoDatabase }
+export { mongoDatabase };

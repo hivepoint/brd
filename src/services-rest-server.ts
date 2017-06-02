@@ -149,7 +149,7 @@ export class ServicesRestServer implements RestServer {
         item.searchResults = {
           matches: []
         };
-        const matchesRecord = await serviceSearchMatches.findById(context, searchId, serviceResult.providerId, serviceResult.serviceId);
+        const matchesRecord = await serviceSearchMatches.findById(context, searchId, serviceResult.providerId, serviceResult.serviceId, serviceResult.accountId);
         if (matchesRecord) {
           item.searchResults.matches = matchesRecord.results;
         }
@@ -163,7 +163,7 @@ export class ServicesRestServer implements RestServer {
   private async initiateSearch(context: Context, searchId: string, service: Service, searchString: string): Promise<void> {
     try {
       const searchResult = await RestClient.get<SearchResult>(service.descriptor.serviceUrl + '/search', { braidUserId: context.user.id, accountId: service.account.accountId, q: searchString });
-      await serviceSearchMatches.insertRecord(context, searchId, service.provider.id, service.descriptor.id, searchResult.matches);
+      await serviceSearchMatches.insertRecord(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, searchResult.matches);
       await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, false);
     } catch (err) {
       logger.error(context, 'services', 'loadProvider', 'Failure loading provider', utils.logErrorObject(err));
