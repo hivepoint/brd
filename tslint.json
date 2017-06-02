@@ -47,7 +47,8 @@
       false
     ],
     "no-bitwise": false,
-    "no-floating-promises": true
+    "no-floating-promises": true,
+    "no-unused-variable": true
   },
   "jsRules": {
     /*

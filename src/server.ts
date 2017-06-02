@@ -29,7 +29,7 @@ import { servicesManager } from "./services-manager";
 import { rootPageHandler } from "./page-handlers/root-handler";
 import { userRestServer } from "./user-rest-server";
 import { urlManager } from "./url-manager";
-import { ServiceHandler, ClientMessage } from "./interfaces/service-handler";
+import { ServiceHandler, ClientMessage } from "./interfaces/service-provider";
 
 interface ExpressAppWithWebsocket extends express.Application {
   ws: (path: string, callback: (ws: any, request: Request) => void) => void;
@@ -42,10 +42,10 @@ export class Server implements RestServiceRegistrar {
   private redirectContent: string;
   private maxAge = 86400000;
   private clientServer: net.Server;
-  private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, servicesRestServer, googleProvider, gmailService, googleDriveService];
+  private restServers: RestServer[] = [rootPageHandler, waitingListManager, userRestServer, servicesRestServer];
   private initializables: Initializable[] = [rootPageHandler, emailManager, database];
   private startables: Startable[] = [googleProvider, servicesManager];
-  private serviceHandlers: ServiceHandler[] = [];
+  private serviceHandlers: ServiceHandler[] = [gmailService, googleDriveService];
   private serverStatus = 'starting';
   private expressWs: any;
 
@@ -162,12 +162,12 @@ export class Server implements RestServiceRegistrar {
     } catch (err) {
       error = err;
     } finally {
-      context.finish(error);
+      await context.finish(error);
     }
   }
 
   private async handleClientAppMessage(context: Context, message: ClientMessage): Promise<void> {
-    // noop
+    console.log("Client App message received", message);
   }
 
   private async handleWebsocketClose(parentContextData: any, ws: any, request: Request): Promise<void> {
@@ -180,7 +180,7 @@ export class Server implements RestServiceRegistrar {
     } catch (err) {
       error = err;
     } finally {
-      context.finish(error);
+      await context.finish(error);
     }
   }
 

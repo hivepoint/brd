@@ -7,11 +7,12 @@ import { GoogleService } from "./google-service";
 import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult, FeedResult } from "../../interfaces/service-provider";
 import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
-import { ServiceHandler, ClientMessage } from "../../interfaces/service-handler";
+import { ServiceHandler, ClientMessage } from "../../interfaces/service-provider";
 
 import * as moment from 'moment';
 import { clock } from "../../utils/clock";
 import { logger } from "../../utils/logger";
+import { googleProvider } from "./google-provider";
 
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -20,7 +21,6 @@ const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
 const SERVICE_URL = '/svc/google/drive';
-const SERVICE_ID = 'com.hivepoint.google.drive';
 
 // https://developers.google.com/drive/v3/reference/files#resource
 interface DriveFileResource {
@@ -177,10 +177,10 @@ export interface DriveFileCardDetails {
 const MAX_CACHE_LIFETIME = 1000 * 60 * 60;
 
 export class GoogleDriveService extends GoogleService {
-
+  serviceId = 'com.hivepoint.google.drive';
   getDescriptor(context: Context): ServiceDescriptor {
     return {
-      id: SERVICE_ID,
+      id: this.serviceId,
       name: 'Drive',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/drive.png'),
       serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
@@ -308,8 +308,8 @@ export class GoogleDriveService extends GoogleService {
         const details = this.getDriveItemDetails(item, googleUser);
         const match: FeedItem = {
           timestamp: timestamp,
-          providerId: this.PROVIDER_ID,
-          serviceId: SERVICE_ID,
+          providerId: googleProvider.PROVIDER_ID,
+          serviceId: this.serviceId,
           iconUrl: '/s/svcs/google/drive.png',
           details: details,
           url: 'https://drive.google.com/open?id=' + item.id
@@ -394,10 +394,10 @@ export class GoogleDriveService extends GoogleService {
   }
 
   async handleClientCardMessage(context: Context, message: ClientMessage): Promise<void> {
-
+    // noop
   }
   async handleClientSocketClosed(context: Context): Promise<void> {
-
+    // noop
   }
 
 }

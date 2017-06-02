@@ -1,4 +1,5 @@
 import { Context } from "./context";
+import { RestServer } from "../interfaces/rest-server";
 
 export const SERVICE_URL_SUFFIXES = {
   search: '/search',
@@ -62,7 +63,7 @@ export interface ClientMessageDeliverer {
   deliverMessage(context: Context, message: ClientMessage): Promise<void>;
 }
 
-export interface ServiceHandler {
+export interface ServiceHandler extends RestServer {
   providerId: string;
   serviceId: string;
   handleClientCardMessage(context: Context, message: ClientMessage): Promise<void>;

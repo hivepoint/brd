@@ -10,6 +10,7 @@ import { GoogleBatchResponse } from "./google-service";
 import { logger } from "../../utils/logger";
 import { clock } from "../../utils/clock";
 import { ServiceHandler, ClientMessage } from "../../interfaces/service-provider";
+import { googleProvider } from "./google-provider";
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
 const dateParser = require('parse-date/silent');
@@ -36,7 +37,6 @@ interface GmailMessageDetails {
 }
 
 const SERVICE_URL = '/svc/google/gmail';
-const SERVICE_ID = 'com.hivepoint.google.gmail';
 
 interface GmailAttachmentResource {
   attachmentId: string;
@@ -79,10 +79,10 @@ interface GmailListResponse {
 const MAX_CACHE_LIFETIME = 1000 * 60 * 5;
 
 export class GmailService extends GoogleService {
-
+  serviceId = 'com.hivepoint.google.gmail';
   getDescriptor(context: Context): ServiceDescriptor {
     return {
-      id: SERVICE_ID,
+      id: this.serviceId,
       name: 'Gmail',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/gmail.png'),
       serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
@@ -91,6 +91,11 @@ export class GmailService extends GoogleService {
 
   getOauthScopes(): string[] {
     return ['https://www.googleapis.com/auth/gmail.readonly'];
+  }
+
+  async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
+    registrar.registerHandler(context, this.handleSearch.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.search, true, false);
+    registrar.registerHandler(context, this.handleFeed.bind(this), 'get', SERVICE_URL + SERVICE_URL_SUFFIXES.feed, true, false);
   }
 
   async handleSearch(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -201,8 +206,8 @@ export class GmailService extends GoogleService {
       const details = this.getEmailDetails(message, googleUser);
       const match: FeedItem = {
         timestamp: this.getEmailDate(message),
-        providerId: this.PROVIDER_ID,
-        serviceId: SERVICE_ID,
+        providerId: googleProvider.PROVIDER_ID,
+        serviceId: this.serviceId,
         iconUrl: '/s/svcs/google/msg.png',
         details: details,
         url: this.getEmailUrl(message, googleUser)
@@ -318,10 +323,10 @@ export class GmailService extends GoogleService {
   }
 
   async handleClientCardMessage(context: Context, message: ClientMessage): Promise<void> {
-
+    // noop
   }
   async handleClientSocketClosed(context: Context): Promise<void> {
-
+    // noop
   }
 
 }

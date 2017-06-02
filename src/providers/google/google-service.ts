@@ -3,16 +3,9 @@ import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser } from "../../db";
 import { utils } from "../../utils/utils";
-import { ServiceDescriptor, ClientMessageDeliverer } from "../../interfaces/service-provider";
+import { ServiceDescriptor, ClientMessageDeliverer, ServiceHandler, ClientMessage } from "../../interfaces/service-provider";
 import { googleProvider } from "./google-provider";
-import { ServiceHandler, ClientMessage } from "../../interfaces/service-handler";
 
-const googleBatch = require('google-batch');
-const google = googleBatch.require('googleapis');
-const dateParser = require('parse-date/silent');
-const addrparser = require('address-rfc2822');
-
-const PROVIDER_ID = 'com.hivepoint.search.google';
 const GMAIL_SERVICE_ID = 'gmail';
 const DRIVE_SERVICE_ID = 'drive';
 
@@ -24,8 +17,12 @@ export interface GoogleBatchResponse<T> {
 }
 
 export abstract class GoogleService implements ServiceHandler {
-  providerId = 'com.hivepoint.search.google';
+  providerId = 'com.hivepoint.google';
+  private deliverer: ClientMessageDeliverer;
+
   abstract serviceId: string;
+
+  abstract initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void>;
 
   abstract getDescriptor(context: Context): ServiceDescriptor;
   abstract getOauthScopes(): string[];
@@ -38,7 +35,11 @@ export abstract class GoogleService implements ServiceHandler {
   abstract handleClientCardMessage(context: Context, message: ClientMessage): Promise<void>;
   abstract handleClientSocketClosed(context: Context): Promise<void>;
   registerClientMessageDeliveryService(context: Context, messageDeliverer: ClientMessageDeliverer) {
+    this.deliverer = messageDeliverer;
+  }
 
+  protected async deliverMessageToClient(context: Context, message: ClientMessage): Promise<void> {
+    await this.deliverer.deliverMessage(context, message);
   }
 
 }
