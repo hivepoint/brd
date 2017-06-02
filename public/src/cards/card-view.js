@@ -14,7 +14,8 @@ class CardView extends Polymer.Element {
     super();
     this.cardMap = {
       "dummy": { node: "dummy-card", path: "dummy/dummy-card.html" },
-      "com.hivepoint.google.gmail": { node: "email-card", path: "email/email-card.html" }
+      "com.hivepoint.google.gmail": { node: "email-card", path: "email/email-card.html" },
+      "com.hivepoint.google.drive": { node: "file-card", path: "file/file-card.html" }
     };
   }
 
