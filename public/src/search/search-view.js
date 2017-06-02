@@ -12,9 +12,14 @@ class SearchView extends Polymer.Element {
   }
 
   search(query) {
+    this.set("items", []);
+    this.$.loading.style.display = "";
+    this.$.none.style.display = "none";
     $service.search(query).then((response) => {
+      this.$.loading.style.display = "none";
       this.set("data", response);
     }).catch((err) => {
+      this.$.loading.style.display = "none";
       console.error("Error searching: ", err);
     });
   }
@@ -34,6 +39,7 @@ class SearchView extends Polymer.Element {
       return (b.timestamp || 0) - (a.timestamp || 0);
     });
     this.set("items", items);
+    this.$.none.style.display = this.items.length ? "none" : "";
   }
 }
 
