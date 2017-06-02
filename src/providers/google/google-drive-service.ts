@@ -232,6 +232,7 @@ export class GoogleDriveService extends GoogleService {
     if (!since) {
       since = clock.now() - 1000 * 60 * 60 * 24;
     }
+    since = Math.max(clock.now() - 1000 * 60 * 60 * 24, since);
     try {
       const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, null, since);
       const result: FeedResult = {
@@ -269,33 +270,10 @@ export class GoogleDriveService extends GoogleService {
     };
     args.q = query ? query : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
     const listResponse = await this.listFiles(context, args, googleUser);
+    logger.log(context, 'google-drive', 'handleFetch', 'Listed ' + listResponse.files.length + ' files', query, since);
     if (listResponse.files.length === 0) {
       return [];
     }
-
-    // const ids: string[] = [];
-    // for (const file of listResponse.files) {
-    //   ids.push(file.id);
-    // }
-    // const cacheItems = await googleObjectCache.findItems(context, braidUserId, googleUserId, 'drive-file', ids);
-    // const files: DriveFileResource[] = [];
-
-    // const drive = google.drive('v3');
-    // for (const file of listResponse.files) {
-    //   let found = false;
-    //   for (const cacheItem of cacheItems) {
-    //     if (cacheItem.objectId === file.id && clock.now() - cacheItem.at < MAX_CACHE_LIFETIME) {
-    //       files.push(cacheItem.details as DriveFileResource);
-    //       found = true;
-    //       break;
-    //     }
-    //   }
-    //   if (!found) {
-    //     const fileResource = await this.getFile(context, file.id, oauthClient);
-    //     files.push(fileResource);
-    //     await googleObjectCache.upsertRecord(context, braidUserId, googleUserId, 'drive-file', file.id, fileResource);
-    //   }
-    // }
     listResponse.files.sort((a, b) => {
       const t1 = this.parseFileDate(a.modifiedTime);
       const t2 = this.parseFileDate(b.modifiedTime);
@@ -304,6 +282,9 @@ export class GoogleDriveService extends GoogleService {
     const result: FeedItem[] = [];
     for (const item of listResponse.files) {
       const timestamp = this.parseFileDate(item.modifiedTime);
+      if (!timestamp) {
+        console.log("No timestamp");
+      }
       if (since > 0) {
         if (timestamp > 0 && timestamp < since) {
           break;

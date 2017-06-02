@@ -133,9 +133,12 @@ export class GmailService extends GoogleService {
     if (!braidUserId || !googleUserId) {
       return new RestServiceResult(null, 400, "token and/or id parameter is missing");
     }
-    const since = request.query.since;
+    let since = Number(request.query.since);
     if (!since) {
       return new RestServiceResult(null, 400, "search param is missing");
+    }
+    if (since < clock.now() - 1000 * 60 * 60 * 24) {
+      since = clock.now() - 1000 * 60 * 60 * 24;
     }
     try {
       const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, null, since);
