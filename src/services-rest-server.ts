@@ -111,7 +111,7 @@ export class ServicesRestServer implements RestServer {
       }
       if (services.length > 0) {
         for (const service of services) {
-          await serviceSearchResults.insertRecord(context, searchId, service.provider.id, service.descriptor.id, true, false);
+          await serviceSearchResults.insertRecord(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, true, false);
         }
         const promises: Array<Promise<void>> = [];
         for (const service of services) {
@@ -153,7 +153,7 @@ export class ServicesRestServer implements RestServer {
         if (matchesRecord) {
           item.searchResults.matches = matchesRecord.results;
         }
-        await serviceSearchResults.updateDelivered(context, searchId, serviceResult.providerId, serviceResult.serviceId, true);
+        await serviceSearchResults.updateDelivered(context, searchId, serviceResult.providerId, serviceResult.serviceId, serviceResult.accountId, true);
       }
       result.serviceResults.push(item);
     }
@@ -164,11 +164,11 @@ export class ServicesRestServer implements RestServer {
     try {
       const searchResult = await RestClient.get<SearchResult>(service.descriptor.serviceUrl + '/search', { braidUserId: context.user.id, accountId: service.account.accountId, q: searchString });
       await serviceSearchMatches.insertRecord(context, searchId, service.provider.id, service.descriptor.id, searchResult.matches);
-      await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, false);
+      await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, false);
     } catch (err) {
       logger.error(context, 'services', 'loadProvider', 'Failure loading provider', utils.logErrorObject(err));
       await providerAccounts.updateState(context, context.user.id, service.provider.id, service.account.accountId, 'error', err.toString(), clock.now());
-      await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, false, err.toString());
+      await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, false, err.toString());
     }
   }
 
