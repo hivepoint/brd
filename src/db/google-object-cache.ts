@@ -47,6 +47,10 @@ export class GoogleObjectCacheCollection extends MongoCollection {
   async removeBefore(context: Context, before: number): Promise<void> {
     await this.googleObjectCache.deleteMany({ at: { $lt: before } });
   }
+
+  async removeByBraidUser(context: Context, braidUserId: string): Promise<void> {
+    await this.googleObjectCache.deleteMany({ braidUserId: braidUserId });
+  }
 }
 
 export interface GoogleObjectCacheItem {

@@ -1,7 +1,7 @@
 import { RestServer, RestServiceRegistrar, RestServiceResult } from '../../interfaces/rest-server';
 import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
-import { googleUsers, GoogleUser, serviceProviders } from "../../db";
+import { googleUsers, GoogleUser, serviceProviders, googleObjectCache } from "../../db";
 import { utils } from "../../utils/utils";
 import { ServiceProviderDescriptor, ProviderUserProfile, ProviderAccountProfile, ServiceProvider } from "../../interfaces/service-provider";
 import { gmailService } from "./gmail-service";
@@ -188,6 +188,12 @@ export class GoogleProvider implements RestServer, Startable, ServiceProvider {
   // async handleUserProfile(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
   //   return new RestServiceResult(await this.getUserProfile(context, request.query.braidUserId as string));
   // }
+
+  async onUserDeleted(context: Context, braidUserId: string): Promise<void> {
+    await googleUsers.deleteByUserId(context, braidUserId);
+    await googleObjectCache.removeByBraidUser(context, braidUserId);
+  }
+
 }
 
 const googleProvider = new GoogleProvider();

@@ -20,7 +20,7 @@ import { ExecutionContext } from "./execution-context";
 import { emailManager } from "./email-manager";
 import { database } from "./db";
 import { waitingListManager } from "./waiting-list-manager";
-import { userManager } from "./user-manager";
+import { userManager, UserSignoutHandler } from "./user-manager";
 import { servicesRestServer } from "./services-rest-server";
 import { googleProvider } from "./providers/google/google-provider";
 import { gmailService } from "./providers/google/gmail-service";
@@ -29,13 +29,14 @@ import { servicesManager } from "./services-manager";
 import { rootPageHandler } from "./page-handlers/root-handler";
 import { userRestServer } from "./user-rest-server";
 import { urlManager } from "./url-manager";
-import { ServiceHandler, ClientMessage } from "./interfaces/service-provider";
+import { ServiceHandler, ClientMessage, ClientMessageDeliverer } from "./interfaces/service-provider";
 import { clock } from "./utils/clock";
+import WebSocket = require('ws');
 
 interface ExpressAppWithWebsocket extends express.Application {
-  ws: (path: string, callback: (ws: any, request: Request) => void) => void;
+  ws: (path: string, callback: (ws: WebSocket, request: Request) => void) => void;
 }
-export class Server implements RestServiceRegistrar {
+export class Server implements RestServiceRegistrar, ClientMessageDeliverer, UserSignoutHandler {
 
   private version = Date.now();
   private running = false;
@@ -49,6 +50,7 @@ export class Server implements RestServiceRegistrar {
   private serviceHandlers: ServiceHandler[] = [gmailService, googleDriveService];
   private serverStatus = 'starting';
   private expressWs: any;
+  private activeSocketsByUser: { [userId: string]: WebSocket[] } = {};
 
   async start(context: Context): Promise<void> {
     process.on('unhandledRejection', (reason: any) => {
@@ -63,6 +65,7 @@ export class Server implements RestServiceRegistrar {
     for (const initializable of this.initializables) {
       await initializable.initialize(context);
     }
+    userManager.registerSignoutHandler(context, this);
 
     await this.startServer(context);
     for (const startable of this.startables) {
@@ -127,26 +130,67 @@ export class Server implements RestServiceRegistrar {
 
   private handleWebsockets(context: Context): void {
     this.expressWs = require('express-ws')(this.app, this.clientServer);
-    this.app.ws('/d/client', (ws: any, request: Request) => {
-      // const timer = clock.setInterval(() => {
-      //   ws.send('__ping__');
-      // });
+    let pingPongInterval = context.getConfig('client.pingPongInterval', 10000) as number;
+    if (pingPongInterval === 0) {
+      pingPongInterval = Number.MAX_SAFE_INTEGER;
+    }
+    this.app.ws('/d/client', (ws: WebSocket, request: Request) => {
+      let lastPong = clock.now() + pingPongInterval / 2;
+      const timer = clock.setInterval(() => {
+        if (clock.now() - lastPong > pingPongInterval) {
+          logger.log(context, 'server', 'handleWebsockets', 'Client socket being closed because of ping-pong timeout');
+          ws.close();
+        } else {
+          ws.send('__ping__');
+        }
+      }, pingPongInterval);
       ws.on('message', (message: any) => {
         if (message && typeof message === 'string') {
-          void this.handleWebsocketMessage(context.getConfigData(), ws, request, message);
+          if (message === '__pong__') {
+            lastPong = clock.now();
+          } else {
+            void this.handleWebsocketMessage(context.getConfigData(), ws, request, message);
+          }
         } else {
           console.warn("Invalid message received on socket", message);
         }
       });
       ws.on('close', () => {
+        clock.clearInterval(timer);
         void this.handleWebsocketClose(context.getConfigData(), ws, request);
       });
     });
   }
 
-  private async handleWebsocketMessage(parentContextData: any, ws: any, request: Request, message: string): Promise<void> {
+  private registerClientSocket(context: Context, ws: WebSocket): void {
+    if (context.user) {
+      let socketList: WebSocket[] = [];
+      socketList = this.activeSocketsByUser[context.user.id];
+      if (!socketList) {
+        socketList = [];
+        this.activeSocketsByUser[context.user.id] = socketList;
+      }
+      socketList.push(ws);
+    }
+  }
+
+  private unregisterClientSocket(context: Context, ws: WebSocket): void {
+    if (context.user) {
+      const socketList = this.activeSocketsByUser[context.user.id];
+      if (socketList && socketList.indexOf(ws) >= 0) {
+        if (socketList.length > 1) {
+          socketList.splice(socketList.indexOf(ws), 1);
+        } else {
+          delete this.activeSocketsByUser[context.user.id];
+        }
+      }
+    }
+  }
+
+  private async handleWebsocketMessage(parentContextData: any, ws: WebSocket, request: Request, message: string): Promise<void> {
     let error: any;
     const context = new ExecutionContext('ws-message', parentContextData);
+    context.websocket = ws;
     await userManager.onWebsocketEvent(context, ws, request);
     try {
       const msg = JSON.parse(message) as ClientMessage;
@@ -154,15 +198,38 @@ export class Server implements RestServiceRegistrar {
         throw new Error("Unexpected or invalid message: " + JSON.stringify(message));
       }
       switch (msg.type) {
-        case 'card':
-          for (const handler of this.serviceHandlers) {
-            if (handler.serviceId === msg.serviceId) {
-              await handler.handleClientCardMessage(context, msg);
+        case 'open':
+          if (msg.details && msg.details.userId) {
+            await userManager.onWebsocketOpenRequest(context, ws, msg.details.userId);
+            if (context.user) {
+              this.registerClientSocket(context, ws);
+              const response: ClientMessage = {
+                type: 'open-success'
+              };
+              this.deliverMessage(context, { type: 'open-success' }, false);
             }
+          } else {
+            logger.warn(context, 'server', 'handleWebsocketMessage', 'Invalid client open message', msg);
+            this.deliverMessage(context, { type: 'open-failed', details: { message: 'No such user' } }, false);
+          }
+          break;
+        case 'card':
+          if (context.user) {
+            for (const handler of this.serviceHandlers) {
+              if (handler.serviceId === msg.serviceId) {
+                await handler.handleClientCardMessage(context, msg);
+              }
+            }
+          } else {
+            logger.warn(context, 'server', 'handleWebsocketMessage', 'Unexpected card client message when no current user');
           }
           break;
         case 'app':
-          await this.handleClientAppMessage(context, msg);
+          if (context.user) {
+            await this.handleClientAppMessage(context, msg);
+          } else {
+            logger.warn(context, 'server', 'handleWebsocketMessage', 'Unexpected app client message when no current user');
+          }
           break;
         default:
           throw new Error("Unhandled client message type " + msg.type);
@@ -182,6 +249,9 @@ export class Server implements RestServiceRegistrar {
   private async handleWebsocketClose(parentContextData: any, ws: any, request: Request): Promise<void> {
     let error: any;
     const context = new ExecutionContext('ws-close', parentContextData);
+    logger.log(context, 'server', 'handleWebsocketClose', 'Client socket closed');
+    await userManager.onWebsocketEvent(context, ws, request);
+    this.unregisterClientSocket(context, ws);
     try {
       for (const handler of this.serviceHandlers) {
         await handler.handleClientSocketClosed(context);
@@ -342,6 +412,33 @@ export class Server implements RestServiceRegistrar {
     const output = Mustache.render(this.redirectContent, view);
     response.send(output);
   }
+
+  async deliverMessage(context: Context, message: ClientMessage, multicast: boolean): Promise<void> {
+    if (multicast) {
+      if (context.user) {
+        const socketList = this.activeSocketsByUser[context.user.id];
+        if (socketList) {
+          const serialized = JSON.stringify(message);
+          for (const ws of socketList) {
+            ws.send(serialized);
+          }
+        }
+      }
+    } else if (context.websocket) {
+      context.websocket.send(JSON.stringify(message));
+    }
+  }
+
+  async onUserSignedOut(context: Context, userId: string): Promise<void> {
+    const socketList = this.activeSocketsByUser[userId];
+    if (socketList) {
+      for (const ws of socketList) {
+        ws.close();
+      }
+      delete this.activeSocketsByUser[userId];
+    }
+  }
+
 }
 
 const server = new Server();

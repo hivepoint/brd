@@ -27,7 +27,8 @@
     "noCaching": false,
     "analytics": false,
     "maxAge": 86400,
-    "rootMaxAge": 600
+    "rootMaxAge": 600,
+    "pingPongInterval": 10000
   },
   "admin": {
     "enabled": true,

@@ -17,6 +17,7 @@ export interface ProviderListing {
 }
 
 export interface ProviderListingResponse {
+  identity: UserIdentity;
   providers: ProviderListing[];
 }
 
@@ -60,10 +61,11 @@ export class ServicesRestServer implements RestServer {
   }
 
   async handleServices(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    const result: ProviderListingResponse = { providers: [] };
+    const result: ProviderListingResponse = { identity: null, providers: [] };
     let accts: ProviderAccount[] = [];
     if (context.user) {
       accts = await providerAccounts.findByUser(context, context.user.id);
+      result.identity = { userId: context.user.id };
     }
     for (const provider of servicesManager.getProviderDescriptors(context, true)) {
       const item: ProviderListing = {

@@ -1,0 +1,3 @@
+interface UserIdentity {
+  userId?: string;
+}

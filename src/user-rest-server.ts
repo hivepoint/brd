@@ -10,10 +10,6 @@ import { providerAccounts } from "./db";
 import { ProviderAccountProfile } from "./interfaces/service-provider";
 import { urlManager } from "./url-manager";
 
-interface UserIdentity {
-  userId?: string;
-}
-
 export class UserRestServer implements RestServer {
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleProviderAuthRequest.bind(this), 'get', '/user/svc/auth', true, false);
@@ -31,7 +27,11 @@ export class UserRestServer implements RestServer {
   }
 
   async handleSignout(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    await userManager.onSignout(context, request, response);
+    if (context.user) {
+      const userId = context.user.id;
+      await userManager.onSignout(context, request, response);
+      await servicesManager.onUserDeleted(context, userId);
+    }
     return new RestServiceResult({});
   }
 

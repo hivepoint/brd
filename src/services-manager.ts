@@ -5,6 +5,7 @@ import { RestClient } from "./utils/rest-client";
 import { logger } from "./utils/logger";
 import { utils } from "./utils/utils";
 import { googleProvider } from "./providers/google/google-provider";
+import { providerAccounts } from "./db";
 
 export class ServicesManager implements Startable {
   private providersById: { [id: string]: ServiceProvider } = {};
@@ -70,6 +71,14 @@ export class ServicesManager implements Startable {
       return null;
     }
     return await provider.getUserProfile(context, braidUserId);
+  }
+
+  async onUserDeleted(context: Context, userId: string): Promise<void> {
+    await providerAccounts.deleteByUser(context, userId);
+    for (const providerId of Object.keys(this.providersById)) {
+      const provider = this.providersById[providerId];
+      provider.onUserDeleted(context, userId);
+    }
   }
 }
 

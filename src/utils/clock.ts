@@ -111,8 +111,11 @@ export class Clock {
     return entry;
   }
 
-  clearTimeout(timeout: any) {
-    this.timeouts.splice(this.timeouts.indexOf(timeout), 1);
+  clearTimeout(timer: TimerEntry) {
+    if (timer.timer) {
+      clearTimeout(timer.timer);
+    }
+    this.timeouts.splice(this.timeouts.indexOf(timer), 1);
   }
 
   setInterval(handler: () => void, interval: number): TimerEntry {
@@ -127,6 +130,9 @@ export class Clock {
   }
 
   clearInterval(entry: TimerEntry) {
+    if (entry.timer) {
+      clearInterval(entry.timer);
+    }
     this.intervals.splice(this.intervals.indexOf(entry), 1);
   }
 

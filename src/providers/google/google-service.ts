@@ -38,8 +38,8 @@ export abstract class GoogleService implements ServiceHandler {
     this.deliverer = messageDeliverer;
   }
 
-  protected async deliverMessageToClient(context: Context, message: ClientMessage): Promise<void> {
-    await this.deliverer.deliverMessage(context, message);
+  protected async deliverMessageToClient(context: Context, message: ClientMessage, multicast: boolean): Promise<void> {
+    await this.deliverer.deliverMessage(context, message, multicast);
   }
 
 }

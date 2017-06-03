@@ -31,6 +31,9 @@ export class UserCollection extends MongoCollection {
     await this.users.update({ id: context.user.id }, { $set: { lastCaughtUp: lastCaughtUp } });
     user.lastCaughtUp = lastCaughtUp;
   }
+  async delete(context: Context, userId: string): Promise<void> {
+    await this.users.deleteOne({ id: userId });
+  }
 }
 
 export interface User {

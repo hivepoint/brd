@@ -38,6 +38,10 @@ export class GoogleUsersCollection extends MongoCollection {
       googleUserId: googleUserId
     });
   }
+
+  async deleteByUserId(context: Context, braidUserId: string): Promise<void> {
+    await this.googleUsers.deleteMany({ braidUserId: braidUserId });
+  }
 }
 
 export interface GoogleUser {

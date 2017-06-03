@@ -58,6 +58,10 @@ export class ProviderAccountsCollection extends MongoCollection {
       });
   }
 
+  async deleteByUser(context: Context, braidUserId: string): Promise<void> {
+    await this.providerAccounts.deleteMany({ braidUserId: braidUserId });
+  }
+
 }
 
 export interface ProviderAccount {

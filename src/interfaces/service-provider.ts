@@ -60,7 +60,7 @@ export interface ClientMessage {
 }
 
 export interface ClientMessageDeliverer {
-  deliverMessage(context: Context, message: ClientMessage): Promise<void>;
+  deliverMessage(context: Context, message: ClientMessage, multicast: boolean): Promise<void>;
 }
 
 export interface ServiceHandler extends RestServer {
@@ -74,4 +74,5 @@ export interface ServiceHandler extends RestServer {
 export interface ServiceProvider {
   getDescriptor(context: Context): Promise<ServiceProviderDescriptor>;
   getUserProfile(context: Context, braidUserId: string): Promise<ProviderUserProfile>;
+  onUserDeleted(context: Context, braidUserId: string): Promise<void>;
 }

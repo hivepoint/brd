@@ -2,11 +2,13 @@
 import { Context } from "./interfaces/context";
 import { clock } from "./utils/clock";
 import { User } from "./db";
+import WebSocket = require('ws');
 
 export class ExecutionContext implements Context {
   id: string;
   user: User;
   serverId: string;
+  websocket: WebSocket;
   private configData: any;
   private started: number;
 
