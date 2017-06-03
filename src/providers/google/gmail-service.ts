@@ -162,7 +162,7 @@ export class GmailService extends GoogleService {
       userId: 'me',
       maxResults: 50
     };
-    args.q = query ? query : "newer_than:2d";
+    args.q = query ? query : "newer_than:2d AND NOT label:DRAFT";
     const listResponse = await this.listGmailMessages(context, args, googleUser);
     if (listResponse.messages.length === 0) {
       return [];
