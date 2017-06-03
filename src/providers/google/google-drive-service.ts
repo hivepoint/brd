@@ -202,12 +202,17 @@ export class GoogleDriveService extends GoogleService {
     if (!braidUserId || !googleUserId) {
       return new RestServiceResult(null, 400, "braidUserId and/or id parameter is missing");
     }
-    const query = request.query.q;
+    let query: string = request.query.q;
     if (!query) {
       return new RestServiceResult(null, 400, "Search query q is missing");
     }
     try {
-      const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query, null);
+      query = query.split(/[\'\"]/).join(' ').trim();
+      let feedItems: FeedItem[];
+      feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, "name contains '" + query + "' or fullText contains '\"" + query + "\"'", null);
+      if (feedItems.length === 0) {
+        feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, "name contains '" + query + "' or fullText contains '" + query + "'", null);
+      }
       const result: SearchResult = {
         matches: feedItems
       };
@@ -223,10 +228,11 @@ export class GoogleDriveService extends GoogleService {
     if (!braidUserId || !googleUserId) {
       return new RestServiceResult(null, 400, "braidUserId and/or id parameter is missing");
     }
-    let since = request.query.since;
+    let since: number = Number(request.query.since);
     if (!since) {
       since = clock.now() - 1000 * 60 * 60 * 24;
     }
+    since = Math.max(clock.now() - 1000 * 60 * 60 * 24, since);
     try {
       const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, null, since);
       const result: FeedResult = {
@@ -247,10 +253,10 @@ export class GoogleDriveService extends GoogleService {
 
   private formatFileDate(value: number): string {
     const RFC_3339 = 'YYYY-MM-DDTHH:mm:ss';
-    return moment.utc().format(RFC_3339);
+    return moment(value).utc().format(RFC_3339);
   }
 
-  private async handleFetchInternal(context: Context, braidUserId: string, googleUserId: string, query: string, since = 0): Promise<FeedItem[]> {
+  private async handleFetchInternal(context: Context, braidUserId: string, googleUserId: string, query: string, since: number = 0): Promise<FeedItem[]> {
     const googleUser = await googleUsers.findByUserAndGoogleId(context, braidUserId, googleUserId);
     if (!googleUser) {
       throw new Error("User missing or invalid");
@@ -262,8 +268,9 @@ export class GoogleDriveService extends GoogleService {
       orderBy: 'modifiedTime desc',
       fields: "nextPageToken, files(id, name, mimeType, description, starred, version, webContentLink, webViewLink, iconLink, thumbnailLink, viewedByMe, viewedByMeTime, createdTime, modifiedTime, modifiedByMe, modifiedByMeTime, sharedWithMeTime, sharingUser, owners, teamDriveId, lastModifyingUser, shared, ownedByMe, fileExtension, md5Checksum, size, imageMediaMetadata, videoMediaMetadata)"
     };
-    args.q = query ? "fullText contains '" + query + "'" : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
+    args.q = query ? query : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
     const listResponse = await this.listFiles(context, args, googleUser);
+    logger.log(context, 'google-drive', 'handleFetch', 'Listed ' + listResponse.files.length + ' files', query, since);
     if (listResponse.files.length === 0) {
       return [];
     }
@@ -275,6 +282,9 @@ export class GoogleDriveService extends GoogleService {
     const result: FeedItem[] = [];
     for (const item of listResponse.files) {
       const timestamp = this.parseFileDate(item.modifiedTime);
+      if (!timestamp) {
+        console.log("No timestamp");
+      }
       if (since > 0) {
         if (timestamp > 0 && timestamp < since) {
           break;

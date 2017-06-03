@@ -106,6 +106,7 @@ class BraidApp extends Polymer.Element {
         }
       }
 
+      this.$.signoutPanel.style.display = hasAccounts ? "" : "none";
       this.$.watermark.style.display = hasAccounts ? "none" : "";
       this.$.btnSearch.style.display = hasAccounts ? "" : "none";
       this.hasAccounts = hasAccounts;
@@ -215,6 +216,14 @@ class BraidApp extends Polymer.Element {
         this.$.searchIcon.style.color = "";
       }, 500);
     }
+  }
+
+  signOut() {
+    $service.signOut().then(() => {
+      this.refreshServices();
+    }).catch(() => {
+      this.refreshServices();
+    });
   }
 
 }

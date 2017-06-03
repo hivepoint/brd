@@ -58,13 +58,13 @@
       <div class="flex addressCell">
         <div class="horizontal layout">
           <div class="from flex">{{fromDisplay}}</div>
-          <div class="timestamp">{{data.timestamp}}</div>
+          <div class="timestamp">{{timeDisplay}}</div>
         </div>
         <div class="to">{{toDisplay}}</div>
       </div>
     </div>
     <div class="subject">{{data.details.subject}}</div>
-    <div class="snippet"><span>{{data.details.snippet}}</span>...</div>
+    <div class="snippet"><span>{{snippet}}</span>...</div>
   </template>
   <script src="email-card.js"></script>
 </dom-module>

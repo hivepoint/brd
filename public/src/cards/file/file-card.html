@@ -95,7 +95,7 @@
           <div class="flex">
             Last modified by <span class="from">{{data.details.lastModifyingUser.displayName}}</span>
           </div>
-          <div class="timestamp">{{data.timestamp}}</div>
+          <div class="timestamp">{{timeDisplay}}</div>
         </div>
         <div class="fileName">{{data.details.name}}</div>
       </div>
@@ -128,11 +128,13 @@
             type: Object,
             observer: 'onData'
           },
-          ownersLabel: String
+          ownersLabel: String,
+          timeDisplay: String
         };
       }
       onData() {
         if (this.data) {
+          this.set("timeDisplay", $utils.friendlyTime(this.data.timestamp));
           var count = (this.data.details.owners || []).length;
           this.$.ownersPanel.style.display = count ? "" : "none";
           this.set("ownersLabel", count == 1 ? "Owner:" : "Owners:");

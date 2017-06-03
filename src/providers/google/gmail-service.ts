@@ -109,7 +109,15 @@ export class GmailService extends GoogleService {
       return new RestServiceResult(null, 400, "Search query q is missing");
     }
     try {
-      const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query);
+      let feedItems: FeedItem[];
+      if (query.indexOf('"') < 0 && query.indexOf("'") < 0) {
+        feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, '"' + query + '"');
+        if (feedItems.length === 0) {
+          feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query);
+        }
+      } else {
+        feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, query);
+      }
       const result: SearchResult = {
         matches: feedItems
       };
@@ -125,9 +133,12 @@ export class GmailService extends GoogleService {
     if (!braidUserId || !googleUserId) {
       return new RestServiceResult(null, 400, "token and/or id parameter is missing");
     }
-    const since = request.query.since;
+    let since = Number(request.query.since);
     if (!since) {
       return new RestServiceResult(null, 400, "search param is missing");
+    }
+    if (since < clock.now() - 1000 * 60 * 60 * 24) {
+      since = clock.now() - 1000 * 60 * 60 * 24;
     }
     try {
       const feedItems = await this.handleFetchInternal(context, braidUserId, googleUserId, null, since);

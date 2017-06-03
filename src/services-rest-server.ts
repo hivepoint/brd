@@ -166,7 +166,7 @@ export class ServicesRestServer implements RestServer {
       await serviceSearchMatches.insertRecord(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, searchResult.matches);
       await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, false);
     } catch (err) {
-      logger.error(context, 'services', 'loadProvider', 'Failure loading provider', utils.logErrorObject(err));
+      logger.error(context, 'services', 'initiateSearch', 'Failure initiating search for ' + service.descriptor.id, utils.logErrorObject(err));
       await providerAccounts.updateState(context, context.user.id, service.provider.id, service.account.accountId, 'error', err.toString(), clock.now());
       await serviceSearchResults.updateState(context, searchId, service.provider.id, service.descriptor.id, service.account.accountId, false, err.toString());
     }

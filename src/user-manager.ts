@@ -45,6 +45,9 @@ export class UserManager {
       context.user = await users.findById(context, userId);
     }
   }
+  async onSignout(context: Context, request: Request, response: Response): Promise<void> {
+    response.clearCookie(USERID_COOKIE_NAME);
+  }
 }
 
 const userManager = new UserManager();

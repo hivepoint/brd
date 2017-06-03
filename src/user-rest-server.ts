@@ -14,6 +14,12 @@ export class UserRestServer implements RestServer {
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleProviderAuthRequest.bind(this), 'get', '/user/svc/auth', true, false);
     registrar.registerHandler(context, this.handleProviderAuthCallback.bind(this), 'get', '/user/svc/auth/callback', true, false);
+    registrar.registerHandler(context, this.handleSignout.bind(this), 'get', '/user/signout', true, false);
+  }
+
+  async handleSignout(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    await userManager.onSignout(context, request, response);
+    return new RestServiceResult({});
   }
 
   async handleProviderAuthRequest(context: Context, request: Request, response: Response): Promise<RestServiceResult> {

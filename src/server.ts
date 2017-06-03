@@ -291,7 +291,8 @@ export class Server implements RestServiceRegistrar {
       if (!doNotHandle) {
         const result = await handler(context, request, response);
         if (result.redirectUrl) {
-          this.redirectToUrl(context, request, response, result.redirectUrl);
+          response.redirect(result.redirectUrl);
+          // this.redirectToUrl(context, request, response, result.redirectUrl);
         } else if (result.json) {
           response.json(result.json);
         } else {
