@@ -43,7 +43,7 @@ export class ServicesManager implements Startable {
 
   private async loadProvider(context: Context, provider: SearchProvider): Promise<void> {
     try {
-      logger.log(context, 'services', 'loadProvider', "Loading provider: " + provider.id);
+      logger.log(context, 'services', 'loadProvider', "Loading provider: " + provider.id + " at " + provider.serviceUrl);
       const descriptor = await RestClient.get<ServiceProviderDescriptor>(provider.serviceUrl, {});
       this.providerDescriptors.push(descriptor);
     } catch (err) {
