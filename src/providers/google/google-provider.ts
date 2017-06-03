@@ -31,7 +31,7 @@ export class GoogleProvider implements RestServer, Startable, ServiceProvider {
     const result = new OAuth2(
       CLIENT_ID,
       CLIENT_SECRET,
-      urlManager.getDynamicUrl(context, AUTH_CALLBACK_URL, true)
+      urlManager.getDynamicUrl(context, AUTH_CALLBACK_URL, true, true)
     );
     if (googleUser) {
       result.setCredentials(googleUser.tokens);
@@ -47,7 +47,7 @@ export class GoogleProvider implements RestServer, Startable, ServiceProvider {
   }
 
   async start(context: Context): Promise<void> {
-    await serviceProviders.upsertRecord(context, this.PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true));
+    await serviceProviders.upsertRecord(context, this.PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true, true));
   }
 
   async getDescriptor(context: Context): Promise<ServiceProviderDescriptor> {

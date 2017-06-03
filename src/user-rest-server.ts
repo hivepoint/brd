@@ -10,11 +10,24 @@ import { providerAccounts } from "./db";
 import { ProviderAccountProfile } from "./interfaces/service-provider";
 import { urlManager } from "./url-manager";
 
+interface UserIdentity {
+  userId?: string;
+}
+
 export class UserRestServer implements RestServer {
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
     registrar.registerHandler(context, this.handleProviderAuthRequest.bind(this), 'get', '/user/svc/auth', true, false);
     registrar.registerHandler(context, this.handleProviderAuthCallback.bind(this), 'get', '/user/svc/auth/callback', true, false);
+    registrar.registerHandler(context, this.handleIdentity.bind(this), 'get', '/user/identity', true, false);
     registrar.registerHandler(context, this.handleSignout.bind(this), 'get', '/user/signout', true, false);
+  }
+
+  async handleIdentity(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    const identity: UserIdentity = {};
+    if (context.user) {
+      identity.userId = context.user.id;
+    }
+    return new RestServiceResult(identity);
   }
 
   async handleSignout(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -26,6 +39,7 @@ export class UserRestServer implements RestServer {
     // User wants to initiate (or re-initiate) an authentication for a search service provider
     // They will list the subset of services provided by that provider that they would like to
     // authorize.
+    console.log("handleProviderAuthRequest", request.url);
     const providerId = request.query.providerId;
     if (!providerId) {
       return new RestServiceResult(null, 400, "providerId param missing");

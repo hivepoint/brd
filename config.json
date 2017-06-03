@@ -2,6 +2,7 @@
   "domain": "braid-staging.com",
   "serverId": "DEV",
   "baseClientUri": "http://localhost:31111",
+  "internalRestUri": "http://localhost:31111",
   "mongo": {
     "mongoUrl": "mongodb://localhost:27017/brd",
     "options": {},
