@@ -38,12 +38,16 @@ export class UrlManager {
     }
   }
 
-  getDynamicUrl(context: Context, relativeUrl: string, absolute = false): string {
+  getDynamicUrl(context: Context, relativeUrl: string, absolute = false, internal = true): string {
     if (!relativeUrl.startsWith('/')) {
       relativeUrl = '/' + relativeUrl;
     }
     if (absolute) {
-      return context.getConfig('baseClientUri') + '/d' + relativeUrl;
+      if (internal) {
+        return context.getConfig('internalRestUri') + '/d' + relativeUrl;
+      } else {
+        return context.getConfig('baseClientUri') + '/d' + relativeUrl;
+      }
     } else {
       return '/d' + relativeUrl;
     }
