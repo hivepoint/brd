@@ -39,6 +39,7 @@ export class UserRestServer implements RestServer {
     // User wants to initiate (or re-initiate) an authentication for a search service provider
     // They will list the subset of services provided by that provider that they would like to
     // authorize.
+    console.log("handleProviderAuthRequest", request.url);
     const providerId = request.query.providerId;
     if (!providerId) {
       return new RestServiceResult(null, 400, "providerId param missing");
