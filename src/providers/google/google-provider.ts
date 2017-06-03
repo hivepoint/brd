@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser, serviceProviders } from "../../db";
 import { utils } from "../../utils/utils";
-import { ServiceProviderDescriptor, ProviderUserProfile, ProviderAccountProfile } from "../../interfaces/service-provider";
+import { ServiceProviderDescriptor, ProviderUserProfile, ProviderAccountProfile, ServiceProvider } from "../../interfaces/service-provider";
 import { gmailService } from "./gmail-service";
 import { GoogleService } from "./google-service";
 import { googleDriveService } from "./google-drive-service";
@@ -23,7 +23,7 @@ const SERVICE_URL = '/svc/google';
 const AUTH_URL = SERVICE_URL + '/auth';
 const AUTH_CALLBACK_URL = SERVICE_URL + '/callback';
 
-export class GoogleProvider implements RestServer, Startable {
+export class GoogleProvider implements RestServer, Startable, ServiceProvider {
   PROVIDER_ID = 'com.hivepoint.google';
   createOauthClient(context: Context, googleUser?: GoogleUser): any {
     const OAuth2 = google.auth.OAuth2;
@@ -40,17 +40,17 @@ export class GoogleProvider implements RestServer, Startable {
   }
 
   async initializeRestServices(context: Context, registrar: RestServiceRegistrar): Promise<void> {
-    registrar.registerHandler(context, this.handleServiceProvider.bind(this), 'get', SERVICE_URL, true, false);
+    // registrar.registerHandler(context, this.handleServiceProvider.bind(this), 'get', SERVICE_URL, true, false);
     registrar.registerHandler(context, this.handleServiceAuthRequest.bind(this), 'get', AUTH_URL, true, false);
     registrar.registerHandler(context, this.handleServiceAuthCallback.bind(this), 'get', AUTH_CALLBACK_URL, true, false);
-    registrar.registerHandler(context, this.handleUserProfile.bind(this), 'get', SERVICE_URL + '/profile', true, false);
+    // registrar.registerHandler(context, this.handleUserProfile.bind(this), 'get', SERVICE_URL + '/profile', true, false);
   }
 
   async start(context: Context): Promise<void> {
     await serviceProviders.upsertRecord(context, this.PROVIDER_ID, urlManager.getDynamicUrl(context, SERVICE_URL, true));
   }
 
-  async handleServiceProvider(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+  async getDescriptor(context: Context): Promise<ServiceProviderDescriptor> {
     const description: ServiceProviderDescriptor = {
       id: this.PROVIDER_ID,
       name: 'Google',
@@ -60,7 +60,48 @@ export class GoogleProvider implements RestServer, Startable {
     };
     description.services.push(gmailService.getDescriptor(context));
     description.services.push(googleDriveService.getDescriptor(context));
-    return new RestServiceResult(description);
+    return description;
+  }
+
+  async getUserProfile(context: Context, braidUserId: string): Promise<ProviderUserProfile> {
+    const result: ProviderUserProfile = {
+      providerId: this.PROVIDER_ID,
+      braidUserId: braidUserId,
+      accounts: []
+    };
+    const users = await googleUsers.findByBraidUserId(context, braidUserId);
+    if (users.length === 0) {
+      return null;
+    }
+    for (const user of users) {
+      const account: ProviderAccountProfile = {
+        accountId: user.googleUserId,
+        name: user.profile.name,
+        accountName: user.profile.email,
+        imageUrl: user.profile.picture,
+        serviceIds: user.serviceIds
+      };
+      result.accounts.push(account);
+    }
+    return result;
+  }
+
+  // private getEmailFromProfile(profile: any): string {
+  //   if (profile && profile.emails) {
+  //     for (const email of profile.emails) {
+  //       if (email.type === 'account') {
+  //         return email.value;
+  //       }
+  //     }
+  //   }
+  //   if (profile && profile.emails.length > 0) {
+  //     return profile.emails[0].value;
+  //   }
+  //   return null;
+  // }
+
+  async handleServiceProvider(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+    return new RestServiceResult(await this.getDescriptor(context));
   }
 
   async handleServiceAuthRequest(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
@@ -144,46 +185,9 @@ export class GoogleProvider implements RestServer, Startable {
     });
   }
 
-  async handleUserProfile(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
-    const braidUserId = request.query.braidUserId;
-    if (!braidUserId) {
-      return new RestServiceResult(null, 400, "Missing userToken and/or id parameters");
-    }
-    const result: ProviderUserProfile = {
-      providerId: this.PROVIDER_ID,
-      braidUserId: braidUserId,
-      accounts: []
-    };
-    const users = await googleUsers.findByBraidUserId(context, braidUserId);
-    if (users.length === 0) {
-      return new RestServiceResult(null, 404, "No matching Google user");
-    }
-    for (const user of users) {
-      const account: ProviderAccountProfile = {
-        accountId: user.googleUserId,
-        name: user.profile.name,
-        accountName: user.profile.email,
-        imageUrl: user.profile.picture,
-        serviceIds: user.serviceIds
-      };
-      result.accounts.push(account);
-    }
-    return new RestServiceResult(result);
-  }
-
-  private getEmailFromProfile(profile: any): string {
-    if (profile && profile.emails) {
-      for (const email of profile.emails) {
-        if (email.type === 'account') {
-          return email.value;
-        }
-      }
-    }
-    if (profile && profile.emails.length > 0) {
-      return profile.emails[0].value;
-    }
-    return null;
-  }
+  // async handleUserProfile(context: Context, request: Request, response: Response): Promise<RestServiceResult> {
+  //   return new RestServiceResult(await this.getUserProfile(context, request.query.braidUserId as string));
+  // }
 }
 
 const googleProvider = new GoogleProvider();

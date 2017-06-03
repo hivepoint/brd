@@ -70,3 +70,8 @@ export interface ServiceHandler extends RestServer {
   handleClientSocketClosed(context: Context): Promise<void>;
   registerClientMessageDeliveryService(context: Context, messageDeliverer: ClientMessageDeliverer): void;
 }
+
+export interface ServiceProvider {
+  getDescriptor(context: Context): Promise<ServiceProviderDescriptor>;
+  getUserProfile(context: Context, braidUserId: string): Promise<ProviderUserProfile>;
+}

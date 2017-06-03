@@ -56,11 +56,7 @@ export class UserRestServer implements RestServer {
     if (!braidUserId || !providerId || !accountId || !userCallbackUrl) {
       return new RestServiceResult(null, 400, "Missing braidUserId, providerId, accountId and/or callback params");
     }
-    const provider = servicesManager.getProviderDescriptorById(providerId);
-    if (!provider) {
-      return new RestServiceResult(null, 404, "No such provider");
-    }
-    const profile = await servicesManager.fetchUserProfile(context, provider, braidUserId);
+    const profile = await servicesManager.fetchUserProfile(context, providerId, braidUserId);
     if (!profile) {
       return new RestServiceResult(null, 503, "Profile is missing from search provider");
     }
