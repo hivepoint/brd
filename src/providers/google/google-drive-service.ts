@@ -183,7 +183,7 @@ export class GoogleDriveService extends GoogleService {
       id: SERVICE_ID,
       name: 'Drive',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/drive.png'),
-      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
+      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true, true)
     };
   }
 
