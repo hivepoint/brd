@@ -9,6 +9,7 @@ import { servicesManager } from "./services-manager";
 import { providerAccounts } from "./db";
 import { ProviderAccountProfile } from "./interfaces/service-provider";
 import { urlManager } from "./url-manager";
+import { logger } from "./utils/logger";
 
 interface UserIdentity {
   userId?: string;
@@ -58,8 +59,9 @@ export class UserRestServer implements RestServer {
       return new RestServiceResult(null, 400, "callback param missing");
     }
     const user = await userManager.getOrCreateUser(context, request, response);
-    const callbackUrl = urlManager.getDynamicUrl(context, "/user/svc/auth/callback?braidUserId=" + encodeURIComponent(user.id) + "&providerId=" + encodeURIComponent(provider.id) + "&callback=" + encodeURIComponent(userCallbackUrl), true);
+    const callbackUrl = urlManager.getDynamicUrl(context, "/user/svc/auth/callback?braidUserId=" + encodeURIComponent(user.id) + "&providerId=" + encodeURIComponent(provider.id) + "&callback=" + encodeURIComponent(userCallbackUrl), true, false);
     const redirectUri = provider.authUrl + (provider.authUrl.indexOf('?') < 0 ? '?' : '&') + 'braidUserId=' + encodeURIComponent(user.id) + '&serviceIds=' + encodeURIComponent(serviceIds.join(',')) + '&callback=' + encodeURIComponent(callbackUrl);
+    logger.log(context, 'user-rest', 'handleProviderAuthRequest', 'Returning redirectUri: ' + redirectUri);
     return new RestServiceResult(null, null, null, redirectUri);
   }
 

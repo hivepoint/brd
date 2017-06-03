@@ -38,7 +38,7 @@ export class UrlManager {
     }
   }
 
-  getDynamicUrl(context: Context, relativeUrl: string, absolute = false, internal = false): string {
+  getDynamicUrl(context: Context, relativeUrl: string, absolute: boolean, internal: boolean): string {
     if (!relativeUrl.startsWith('/')) {
       relativeUrl = '/' + relativeUrl;
     }
