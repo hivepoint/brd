@@ -85,7 +85,7 @@ export class GmailService extends GoogleService {
       id: SERVICE_ID,
       name: 'Gmail',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/gmail.png'),
-      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
+      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true, true)
     };
   }
 
