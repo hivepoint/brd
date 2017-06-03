@@ -17,13 +17,17 @@ export class Config {
       this.data.mongo.mongoUrl = this.data.mongo.mongoUrl.split("{domain}").join(this.data.domain.split(".").join("_"));
     }
     if (configDevPath) {
-      const devStat = fs.statSync(configDevPath);
-      if (devStat.isFile) {
-        const ddata = fs.readFileSync(configDevPath, 'utf8');
-        this.data.dev = JSON.parse(ddata);
-        if (this.data.dev.ngrokUrl) {
-          this.data.baseClientUri = this.data.dev.ngrokUrl;
+      try {
+        const devStat = fs.statSync(configDevPath);
+        if (devStat.isFile) {
+          const ddata = fs.readFileSync(configDevPath, 'utf8');
+          this.data.dev = JSON.parse(ddata);
+          if (this.data.dev.ngrokUrl) {
+            this.data.baseClientUri = this.data.dev.ngrokUrl;
+          }
         }
+      } catch (_) {
+        // noop
       }
     }
   }
