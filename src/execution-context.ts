@@ -27,7 +27,7 @@ export class ExecutionContext implements Context {
         data = data[part];
       }
     }
-    if (data) {
+    if (typeof data !== 'undefined') {
       return data;
     } else if (typeof defaultValue !== 'undefined') {
       return defaultValue;

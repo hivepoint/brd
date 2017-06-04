@@ -59,6 +59,34 @@ export interface ClientMessage {
   details?: any;
 }
 
+export class ClientMessageHelper {
+
+  static createErrorReply(requestMessage: ClientMessage, errorMessage: string): ClientMessage {
+    const result: ClientMessage = {
+      type: 'error-reply',
+      serviceId: requestMessage.serviceId,
+      accountId: requestMessage.accountId,
+      details: {
+        errorMessage: errorMessage,
+        original: requestMessage
+      }
+    };
+    return result;
+  }
+
+  static createReply(requestMessage: ClientMessage, type: string, details?: any): ClientMessage {
+    const result: ClientMessage = {
+      type: type,
+      serviceId: requestMessage.serviceId,
+      accountId: requestMessage.accountId
+    };
+    if (details) {
+      result.details = details;
+    }
+    return result;
+  }
+}
+
 export interface ClientMessageDeliverer {
   deliverMessage(context: Context, message: ClientMessage, multicast: boolean): Promise<void>;
 }
@@ -68,10 +96,10 @@ export interface ServiceHandler extends RestServer {
   serviceId: string;
   handleClientCardMessage(context: Context, message: ClientMessage): Promise<void>;
   handleClientSocketClosed(context: Context): Promise<void>;
-  registerClientMessageDeliveryService(context: Context, messageDeliverer: ClientMessageDeliverer): void;
 }
 
 export interface ServiceProvider {
+  registerClientMessageDeliveryService(context: Context, messageDeliverer: ClientMessageDeliverer): void;
   getDescriptor(context: Context): Promise<ServiceProviderDescriptor>;
   getUserProfile(context: Context, braidUserId: string): Promise<ProviderUserProfile>;
   onUserDeleted(context: Context, braidUserId: string): Promise<void>;

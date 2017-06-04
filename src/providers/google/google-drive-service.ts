@@ -7,12 +7,13 @@ import { GoogleService } from "./google-service";
 import { ServiceDescriptor, SERVICE_URL_SUFFIXES, FeedItem, SearchResult, FeedResult } from "../../interfaces/service-provider";
 import { urlManager } from "../../url-manager";
 import { GoogleBatchResponse } from "./google-service";
-import { ServiceHandler, ClientMessage } from "../../interfaces/service-provider";
+import { ServiceHandler, ClientMessage, ClientMessageHelper } from "../../interfaces/service-provider";
 
 import * as moment from 'moment';
 import { clock } from "../../utils/clock";
 import { logger } from "../../utils/logger";
 import { googleProvider } from "./google-provider";
+import { NewsItem } from "../../interfaces/news-feed";
 
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -21,6 +22,8 @@ const dateParser = require('parse-date/silent');
 const addrparser = require('address-rfc2822');
 
 const SERVICE_URL = '/svc/google/drive';
+
+const MAX_NEWS_ITEMS = 12;
 
 // https://developers.google.com/drive/v3/reference/files#resource
 interface DriveFileResource {
@@ -105,6 +108,36 @@ interface DriveFileResource {
   isAppAuthorized: boolean;
 }
 
+// https://developers.google.com/drive/v3/reference/teamdrives#resource
+
+interface TeamDriveResource {
+  kind: string;
+  id: string;
+  name: string;
+  themeId: string;
+  colorRgb: string;
+  backgroundImageFile: {
+    id: string;
+    xCoordinate: number;
+    yCoordinate: number;
+    width: number;
+  };
+  backgroundImageLink: string;
+  capabilities: any;
+}
+
+// https://developers.google.com/drive/v3/reference/changes#resource
+interface DriveFileChange {
+  kind: string;
+  type: string;
+  time: string;
+  removed: boolean;
+  fileId: string;
+  file: DriveFileResource;
+  teamDriveId: string;
+  teamDrive: TeamDriveResource;
+}
+
 // https://developers.google.com/drive/v3/reference/files/list
 interface DriveFilesListResponse {
   kind: string;
@@ -183,7 +216,7 @@ export class GoogleDriveService extends GoogleService {
       id: this.serviceId,
       name: 'Drive',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/drive.png'),
-      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true)
+      serviceUrl: urlManager.getDynamicUrl(context, SERVICE_URL, true, true)
     };
   }
 
@@ -261,26 +294,9 @@ export class GoogleDriveService extends GoogleService {
     if (!googleUser) {
       throw new Error("User missing or invalid");
     }
-    const oauthClient = this.createOauthClient(context, googleUser);
-    const args: any = {
-      auth: oauthClient,
-      pageSize: 25,
-      orderBy: 'modifiedTime desc',
-      fields: "nextPageToken, files(id, name, mimeType, description, starred, version, webContentLink, webViewLink, iconLink, thumbnailLink, viewedByMe, viewedByMeTime, createdTime, modifiedTime, modifiedByMe, modifiedByMeTime, sharedWithMeTime, sharingUser, owners, teamDriveId, lastModifyingUser, shared, ownedByMe, fileExtension, md5Checksum, size, imageMediaMetadata, videoMediaMetadata)"
-    };
-    args.q = query ? query : "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
-    const listResponse = await this.listFiles(context, args, googleUser);
-    logger.log(context, 'google-drive', 'handleFetch', 'Listed ' + listResponse.files.length + ' files', query, since);
-    if (listResponse.files.length === 0) {
-      return [];
-    }
-    listResponse.files.sort((a, b) => {
-      const t1 = this.parseFileDate(a.modifiedTime);
-      const t2 = this.parseFileDate(b.modifiedTime);
-      return t2 - t1;
-    });
+    const files = await this.performFetch(context, braidUserId, googleUser, query, since, 25);
     const result: FeedItem[] = [];
-    for (const item of listResponse.files) {
+    for (const item of files) {
       const timestamp = this.parseFileDate(item.modifiedTime);
       if (!timestamp) {
         console.log("No timestamp");
@@ -304,6 +320,38 @@ export class GoogleDriveService extends GoogleService {
       }
     }
     return result;
+  }
+
+  private async performFetch(context: Context, braidUserId: string, googleUser: GoogleUser, query: string, since: number, maxItems: number): Promise<DriveFileResource[]> {
+    const oauthClient = this.createOauthClient(context, googleUser);
+    const args: any = {
+      auth: oauthClient,
+      pageSize: maxItems,
+      orderBy: 'modifiedTime desc',
+      fields: "nextPageToken, files(id, name, mimeType, description, starred, version, webContentLink, webViewLink, iconLink, thumbnailLink, viewedByMe, viewedByMeTime, createdTime, modifiedTime, modifiedByMe, modifiedByMeTime, sharedWithMeTime, sharingUser, owners, teamDriveId, lastModifyingUser, shared, ownedByMe, fileExtension, md5Checksum, size, imageMediaMetadata, videoMediaMetadata)"
+    };
+    let listResponse: DriveFilesListResponse;
+    if (query) {
+      query = query.split(/[\'\"]/).join(' ').trim();
+      args.q = "name contains '" + query + "' or fullText contains '\"" + query + "\"'";
+      listResponse = await this.listFiles(context, args, googleUser);
+      logger.log(context, 'google-drive', 'performFetch', 'Searched(1): Listed ' + listResponse.files.length + ' files', query, since);
+      if (listResponse.files.length === 0) {
+        args.q = "name contains '" + query + "' or fullText contains '" + query + "'";
+        listResponse = await this.listFiles(context, args, googleUser);
+        logger.log(context, 'google-drive', 'performFetch', 'Searched(2): Listed ' + listResponse.files.length + ' files', query, since);
+      }
+    } else {
+      args.q = "modifiedTime > '" + this.formatFileDate(since - 1000 * 60 * 60 * 24) + "'";
+      listResponse = await this.listFiles(context, args, googleUser);
+      logger.log(context, 'google-drive', 'performFetch', 'Listed ' + listResponse.files.length + ' files', query, since);
+    }
+    listResponse.files.sort((a, b) => {
+      const t1 = this.parseFileDate(a.modifiedTime);
+      const t2 = this.parseFileDate(b.modifiedTime);
+      return t2 - t1;
+    });
+    return listResponse.files;
   }
 
   private async listFiles(context: Context, args: any, googleUser: GoogleUser): Promise<DriveFilesListResponse> {
@@ -381,10 +429,67 @@ export class GoogleDriveService extends GoogleService {
   }
 
   async handleClientCardMessage(context: Context, message: ClientMessage): Promise<void> {
-    // noop
+    if (!context.user) {
+      await this.deliverMessageToClient(context, ClientMessageHelper.createErrorReply(message, 'No current user'), false);
+      return;
+    }
+
+    switch (message.type) {
+      case 'news':
+        await this.handleNewsFeedOrSearchRequest(context, message, false);
+        break;
+      case 'search':
+        await this.handleNewsFeedOrSearchRequest(context, message, true);
+        break;
+      default:
+        await this.deliverMessageToClient(context, ClientMessageHelper.createErrorReply(message, 'Unhandled message type'), false);
+        break;
+    }
   }
   async handleClientSocketClosed(context: Context): Promise<void> {
     // noop
+  }
+
+  private async handleNewsFeedOrSearchRequest(context: Context, request: ClientMessage, isSearch: boolean): Promise<void> {
+    const googleUser = await googleUsers.findByUserAndGoogleId(context, context.user.id, request.accountId);
+    if (!googleUser) {
+      throw new Error("User missing or invalid");
+    }
+    const since = isSearch ? null : clock.now() - 1000 * 60 * 60 * 24 * 3;
+    const query = isSearch ? request.details.q : null;
+    try {
+      const files = await this.performFetch(context, context.user.id, googleUser, query, since, MAX_NEWS_ITEMS);
+      const newsItems: NewsItem[] = [];
+      for (const file of files) {
+        newsItems.push(this.createNewsItemForFile(context, file, isSearch));
+      }
+      await this.deliverMessageToClient(context, ClientMessageHelper.createReply(request, isSearch ? 'search-reply' : 'news-reply', { items: newsItems }), false);
+    } catch (err) {
+      await this.deliverMessageToClient(context, ClientMessageHelper.createErrorReply(request, 'Drive API failure'), false);
+    }
+  }
+
+  private createNewsItemForFile(context: Context, file: DriveFileResource, isSearch: boolean): NewsItem {
+    const result: NewsItem = {
+      iconUrl: '/s/svcs/google/drive.png',
+      timestamp: this.parseFileDate(file.modifiedTime),
+      title: file.name,
+      subtitle: (file.createdTime === file.modifiedTime ? 'Created' : (isSearch ? 'Last updated' : 'Updated')) + ' by ' + (file.modifiedByMe ? 'me' : file.lastModifyingUser.displayName),
+      users: []
+    };
+    if (file.hasThumbnail && file.thumbnailLink) {
+      result.imageUrl = file.thumbnailLink;
+    }
+    if (file.lastModifyingUser && !file.modifiedByMe) {
+      result.users.push({ title: file.createdTime === file.modifiedTime ? 'Creator' : 'Editor', name: file.lastModifyingUser.displayName, imageUrl: file.lastModifyingUser.photoLink });
+    }
+    if (!file.ownedByMe && file.owners.length > 0) {
+      result.users.push({ title: 'Owner', name: file.owners[0].displayName, imageUrl: file.owners[0].photoLink });
+    }
+    if (file.webViewLink) {
+      result.sourceLink = file.webViewLink;
+    }
+    return result;
   }
 
 }

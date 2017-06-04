@@ -1,0 +1,23 @@
+{
+  "messages": [
+    {
+      "type": "open",
+      "details": {
+        "userId": "u-2c1484b7-127a-4682-9ce1-9711a80514c8"
+      }
+    },
+    {
+      "type": "news",
+      "serviceId": "com.hivepoint.google.drive",
+      "accountId": "107784640952265394405"
+    },
+    {
+      "type": "search",
+      "serviceId": "com.hivepoint.google.drive",
+      "accountId": "107784640952265394405",
+      "details": {
+        "q": "bridge scores"
+      }
+    }
+  ]
+}

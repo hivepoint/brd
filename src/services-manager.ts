@@ -77,7 +77,7 @@ export class ServicesManager implements Startable {
     await providerAccounts.deleteByUser(context, userId);
     for (const providerId of Object.keys(this.providersById)) {
       const provider = this.providersById[providerId];
-      provider.onUserDeleted(context, userId);
+      await provider.onUserDeleted(context, userId);
     }
   }
 }

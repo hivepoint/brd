@@ -77,6 +77,7 @@ export class Server implements RestServiceRegistrar, ClientMessageDeliverer, Use
   private initialize(context: Context): void {
     const templatePath = path.join(__dirname, '../templates/redirect.html');
     this.redirectContent = fs.readFileSync(templatePath, 'utf8');
+    googleProvider.registerClientMessageDeliveryService(context, this);
   }
 
   private async startServer(context: Context) {
@@ -132,7 +133,7 @@ export class Server implements RestServiceRegistrar, ClientMessageDeliverer, Use
     this.expressWs = require('express-ws')(this.app, this.clientServer);
     let pingPongInterval = context.getConfig('client.pingPongInterval', 10000) as number;
     if (pingPongInterval === 0) {
-      pingPongInterval = Number.MAX_SAFE_INTEGER;
+      pingPongInterval = 1000 * 60 * 60 * 24;
     }
     this.app.ws('/d/client', (ws: WebSocket, request: Request) => {
       let lastPong = clock.now() + pingPongInterval / 2;
@@ -197,42 +198,36 @@ export class Server implements RestServiceRegistrar, ClientMessageDeliverer, Use
       if (!msg || !msg.type) {
         throw new Error("Unexpected or invalid message: " + JSON.stringify(message));
       }
-      switch (msg.type) {
-        case 'open':
-          if (msg.details && msg.details.userId) {
-            await userManager.onWebsocketOpenRequest(context, ws, msg.details.userId);
-            if (context.user) {
-              this.registerClientSocket(context, ws);
-              const response: ClientMessage = {
-                type: 'open-success'
-              };
-              this.deliverMessage(context, { type: 'open-success' }, false);
-            }
-          } else {
-            logger.warn(context, 'server', 'handleWebsocketMessage', 'Invalid client open message', msg);
-            this.deliverMessage(context, { type: 'open-failed', details: { message: 'No such user' } }, false);
-          }
-          break;
-        case 'card':
+      if (msg.type === 'open') {
+        if (msg.details && msg.details.userId) {
+          await userManager.onWebsocketOpenRequest(context, ws, msg.details.userId);
           if (context.user) {
-            for (const handler of this.serviceHandlers) {
-              if (handler.serviceId === msg.serviceId) {
-                await handler.handleClientCardMessage(context, msg);
-              }
+            this.registerClientSocket(context, ws);
+            const response: ClientMessage = {
+              type: 'open-success'
+            };
+            await this.deliverMessage(context, { type: 'open-success' }, false);
+          }
+        } else {
+          logger.warn(context, 'server', 'handleWebsocketMessage', 'Invalid client open message', msg);
+          await this.deliverMessage(context, { type: 'open-failed', details: { message: 'No such user' } }, false);
+        }
+      } else if (msg.serviceId && msg.accountId) {
+        if (context.user) {
+          for (const handler of this.serviceHandlers) {
+            if (handler.serviceId === msg.serviceId) {
+              await handler.handleClientCardMessage(context, msg);
             }
-          } else {
-            logger.warn(context, 'server', 'handleWebsocketMessage', 'Unexpected card client message when no current user');
           }
-          break;
-        case 'app':
-          if (context.user) {
-            await this.handleClientAppMessage(context, msg);
-          } else {
-            logger.warn(context, 'server', 'handleWebsocketMessage', 'Unexpected app client message when no current user');
-          }
-          break;
-        default:
-          throw new Error("Unhandled client message type " + msg.type);
+        } else {
+          logger.warn(context, 'server', 'handleWebsocketMessage', 'Unexpected card client message when no current user');
+        }
+      } else {
+        if (context.user) {
+          await this.handleClientAppMessage(context, msg);
+        } else {
+          logger.warn(context, 'server', 'handleWebsocketMessage', 'Unexpected app client message when no current user');
+        }
       }
     } catch (err) {
       console.warn("Exception handling client message", err);
@@ -425,7 +420,7 @@ export class Server implements RestServiceRegistrar, ClientMessageDeliverer, Use
         }
       }
     } else if (context.websocket) {
-      context.websocket.send(JSON.stringify(message));
+      context.websocket.send(JSON.stringify(message, null, context.getConfig('debug.messages.pretty') ? 3 : null));
     }
   }
 

@@ -3,13 +3,14 @@ import { Request, Response } from 'express';
 import { Context } from '../../interfaces/context';
 import { googleUsers, GoogleUser, serviceProviders, googleObjectCache } from "../../db";
 import { utils } from "../../utils/utils";
-import { ServiceProviderDescriptor, ProviderUserProfile, ProviderAccountProfile, ServiceProvider } from "../../interfaces/service-provider";
+import { ServiceProviderDescriptor, ProviderUserProfile, ProviderAccountProfile, ServiceProvider, ClientMessageDeliverer } from "../../interfaces/service-provider";
 import { gmailService } from "./gmail-service";
 import { GoogleService } from "./google-service";
 import { googleDriveService } from "./google-drive-service";
 import { Startable } from "../../interfaces/startable";
 import url = require('url');
 import { urlManager } from "../../url-manager";
+import { logger } from "../../utils/logger";
 
 const googleBatch = require('google-batch');
 const google = googleBatch.require('googleapis');
@@ -31,7 +32,7 @@ export class GoogleProvider implements RestServer, Startable, ServiceProvider {
     const result = new OAuth2(
       CLIENT_ID,
       CLIENT_SECRET,
-      urlManager.getDynamicUrl(context, AUTH_CALLBACK_URL, true)
+      urlManager.getDynamicUrl(context, AUTH_CALLBACK_URL, true, false)
     );
     if (googleUser) {
       result.setCredentials(googleUser.tokens);
@@ -55,7 +56,7 @@ export class GoogleProvider implements RestServer, Startable, ServiceProvider {
       id: this.PROVIDER_ID,
       name: 'Google',
       logoSquareUrl: urlManager.getStaticUrl(context, '/svcs/google/google.png'),
-      authUrl: urlManager.getDynamicUrl(context, AUTH_URL, true),
+      authUrl: urlManager.getDynamicUrl(context, AUTH_URL, true, false),
       services: []
     };
     description.services.push(gmailService.getDescriptor(context));
@@ -142,6 +143,7 @@ export class GoogleProvider implements RestServer, Startable, ServiceProvider {
       scope: scopes,
       state: JSON.stringify({ braidUserId: braidUserId, services: scopedServiceIds, clientCallback: callbackUrl })
     });
+    logger.log(context, 'google-provider', 'handleServiceAuthRequest', 'Returning redirect to: ' + url);
     return new RestServiceResult(null, null, null, url);
   }
 
@@ -192,6 +194,11 @@ export class GoogleProvider implements RestServer, Startable, ServiceProvider {
   async onUserDeleted(context: Context, braidUserId: string): Promise<void> {
     await googleUsers.deleteByUserId(context, braidUserId);
     await googleObjectCache.removeByBraidUser(context, braidUserId);
+  }
+
+  registerClientMessageDeliveryService(context: Context, messageDeliverer: ClientMessageDeliverer) {
+    gmailService.registerClientMessageDeliveryService(context, messageDeliverer);
+    googleDriveService.registerClientMessageDeliveryService(context, messageDeliverer);
   }
 
 }

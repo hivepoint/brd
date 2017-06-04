@@ -15,6 +15,11 @@
       }
     }
   },
+  "debug": {
+    "messages": {
+      "pretty": true
+    }
+  },
   "ssl": {
     "ca": "/usr/local/etc/certs/caBundle",
     "key": "/usr/local/etc/certs/server.key",
@@ -28,7 +33,7 @@
     "analytics": false,
     "maxAge": 86400,
     "rootMaxAge": 600,
-    "pingPongInterval": 10000
+    "pingPongInterval": 0
   },
   "admin": {
     "enabled": true,
