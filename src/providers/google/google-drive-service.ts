@@ -24,6 +24,7 @@ const addrparser = require('address-rfc2822');
 const SERVICE_URL = '/svc/google/drive';
 
 const MAX_NEWS_ITEMS = 12;
+const MAX_SEARCH_ITEMS = 25;
 
 // https://developers.google.com/drive/v3/reference/files#resource
 interface DriveFileResource {
@@ -458,7 +459,7 @@ export class GoogleDriveService extends GoogleService {
     const since = isSearch ? null : clock.now() - 1000 * 60 * 60 * 24 * 3;
     const query = isSearch ? request.details.q : null;
     try {
-      const files = await this.performFetch(context, context.user.id, googleUser, query, since, MAX_NEWS_ITEMS);
+      const files = await this.performFetch(context, context.user.id, googleUser, query, since, isSearch ? MAX_SEARCH_ITEMS : MAX_NEWS_ITEMS);
       const newsItems: NewsItem[] = [];
       for (const file of files) {
         newsItems.push(this.createNewsItemForFile(context, file, isSearch));

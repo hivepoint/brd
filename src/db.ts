@@ -11,6 +11,7 @@ import { serviceSearchMatches } from './db/service-search-matches';
 
 import { googleUsers } from './db/google-users-collection';
 import { googleObjectCache } from './db/google-object-cache';
+import { pivotalUsers } from './db/pivotal-users-collection';
 
 export * from './db/waiting-list-collection';
 export * from './db/service-providers-collection';
@@ -21,6 +22,7 @@ export * from './db/service-search-matches';
 
 export * from './db/google-users-collection';
 export * from './db/google-object-cache';
+export * from './db/pivotal-users-collection';
 
 export class Database implements Initializable {
   async initialize(context: Context): Promise<void> {
@@ -36,6 +38,7 @@ export class Database implements Initializable {
 
     await googleUsers.ensureOpen(context);
     await googleObjectCache.ensureOpen(context);
+    await pivotalUsers.ensureOpen(context);
   }
 }
 
